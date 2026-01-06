@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeLink | Organ Donation Platform</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-main: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">
+            Life<span>Link</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="blood_donors.html">Find Blood Donors</a></li>
+            <li><a href="#">Hospitals</a></li>
+            <li><a href="#">About Us</a></li>
+
+        </ul>
+        <a href="login.html" class="btn">Login / Register</a>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Give the Gift of Life</h1>
+                <p>Connect with donors and hospitals seamlessly. Your decision can save a life today.</p>
+                <div class="hero-buttons">
+                    <a href="register.html" class="btn">Register as Donor</a>
+                    <a href="#" class="btn btn-secondary">Learn More</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Panels -->
+        <section class="stats-container">
+            <!-- Glass Panel 1 -->
+            <div class="glass-panel stat-card">
+                <span class="stat-number" data-target="donors">0</span>
+                <span class="stat-label">Registered Donors</span>
+            </div>
+
+            <!-- Glass Panel 2 -->
+            <div class="glass-panel stat-card">
+                <span class="stat-number" data-target="hospitals">0</span>
+                <span class="stat-label">Partner Hospitals</span>
+            </div>
+
+            <!-- Glass Panel 3 -->
+            <div class="glass-panel stat-card">
+                <span class="stat-number" data-target="saved">0</span>
+                <span class="stat-label">Organs Received</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy;LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+
+</body>
+</html>

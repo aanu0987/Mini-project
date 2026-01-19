@@ -25,12 +25,19 @@
         </div>
         <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
-            <li><a href="blood_donors.html">Find Blood Donors</a></li>
+            <li><a href="blood_donors.html">Find Donors</a></li>
             <li><a href="#">Hospitals</a></li>
             <li><a href="#">About Us</a></li>
 
         </ul>
-        <a href="login.html" class="btn">Login / Register</a>
+        <div class="auth-buttons">
+            <a href="login.html" class="btn" id="login-btn">Login / Register</a>
+            <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
+                <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
+                <button id="logout-btn" class="btn btn-secondary"
+                    style="padding: 8px 15px; font-size: 0.9rem;">Logout</button>
+            </div>
+        </div>
     </nav>
 
     <!-- Main Content -->
@@ -77,4 +84,5 @@
     <script src="assets/js/main.js"></script>
 
 </body>
+
 </html>

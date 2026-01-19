@@ -25,19 +25,26 @@
         </div>
         <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
-            <li><a href="blood_donors.html" class="active" style="color: var(--primary-color);">Find Blood Donors</a>
+            <li><a href="blood_donors.html" class="active" style="color: var(--primary-color);">Find Donors</a>
             </li>
             <li><a href="#">Hospitals</a></li>
             <li><a href="#">About Us</a></li>
         </ul>
-        <a href="login.html" class="btn">Login / Register</a>
+        <div class="auth-buttons">
+            <a href="login.html" class="btn" id="login-btn">Login / Register</a>
+            <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
+                <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
+                <button id="logout-btn" class="btn btn-secondary"
+                    style="padding: 8px 15px; font-size: 0.9rem;">Logout</button>
+            </div>
+        </div>
     </nav>
 
     <!-- Main Content -->
     <main>
         <section class="page-header">
-            <h1>Emergency Blood Donors</h1>
-            <p style="color: #8b949e; margin-top: 10px;">Find available blood donors in your area immediately.</p>
+            <h1>Find Donors</h1>
+            <p style="color: #8b949e; margin-top: 10px;">Find available organ and blood donors in your area.</p>
             <div class="search-container">
                 <input type="text" id="districtSearch" class="search-bar"
                     placeholder="Search by District (e.g. Chennai, Salem)...">
@@ -45,126 +52,16 @@
         </section>
 
         <section class="donors-container">
-            <div class="donor-grid">
-                <!-- Donor 1 -->
-                <div class="glass-panel donor-card">
-                    <div class="donor-header">
-                        <div class="donor-name">Karthik Raja</div>
-                        <div class="blood-group">O+</div>
-                    </div>
-                    <div class="donor-details">
-                        <div class="donor-detail-item">
-                            <span>📍</span> Chennai, Tamil Nadu
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🎂</span> 24 Years Old
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🕒</span> Last Donated: 3 months ago
-                        </div>
-                    </div>
-                    <a href="tel:+919876543210" class="btn contact-btn">Contact Donor</a>
-                </div>
+            <h2 style="color: var(--primary-color); margin-bottom: 20px;">Organ Donors</h2>
+            <div id="organ-donors-list" class="donor-grid" style="min-height: 100px;">
+                <!-- Dynamic Content -->
+                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading organ donors...</p>
+            </div>
 
-                <!-- Donor 2 -->
-                <div class="glass-panel donor-card">
-                    <div class="donor-header">
-                        <div class="donor-name">Anitha S.</div>
-                        <div class="blood-group">B+</div>
-                    </div>
-                    <div class="donor-details">
-                        <div class="donor-detail-item">
-                            <span>📍</span> Coimbatore, Tamil Nadu
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🎂</span> 29 Years Old
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🕒</span> Last Donated: 6 months ago
-                        </div>
-                    </div>
-                    <a href="tel:+919876543211" class="btn contact-btn">Contact Donor</a>
-                </div>
-
-                <!-- Donor 3 -->
-                <div class="glass-panel donor-card">
-                    <div class="donor-header">
-                        <div class="donor-name">Rahul Verma</div>
-                        <div class="blood-group">AB-</div>
-                    </div>
-                    <div class="donor-details">
-                        <div class="donor-detail-item">
-                            <span>📍</span> Bangalore, Karnataka
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🎂</span> 31 Years Old
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🕒</span> Last Donated: 1 month ago
-                        </div>
-                    </div>
-                    <a href="tel:+919876543212" class="btn contact-btn">Contact Donor</a>
-                </div>
-
-                <!-- Donor 4 -->
-                <div class="glass-panel donor-card">
-                    <div class="donor-header">
-                        <div class="donor-name">Priya Darshini</div>
-                        <div class="blood-group">A+</div>
-                    </div>
-                    <div class="donor-details">
-                        <div class="donor-detail-item">
-                            <span>📍</span> Madurai, Tamil Nadu
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🎂</span> 22 Years Old
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🕒</span> Last Donated: Never
-                        </div>
-                    </div>
-                    <a href="tel:+919876543213" class="btn contact-btn">Contact Donor</a>
-                </div>
-
-                <!-- Donor 5 -->
-                <div class="glass-panel donor-card">
-                    <div class="donor-header">
-                        <div class="donor-name">Suresh Kumar</div>
-                        <div class="blood-group">O-</div>
-                    </div>
-                    <div class="donor-details">
-                        <div class="donor-detail-item">
-                            <span>📍</span> Salem, Tamil Nadu
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🎂</span> 27 Years Old
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🕒</span> Last Donated: 2 months ago
-                        </div>
-                    </div>
-                    <a href="tel:+919876543214" class="btn contact-btn">Contact Donor</a>
-                </div>
-                <!-- Donor 6 -->
-                <div class="glass-panel donor-card">
-                    <div class="donor-header">
-                        <div class="donor-name">Meera N</div>
-                        <div class="blood-group">A-</div>
-                    </div>
-                    <div class="donor-details">
-                        <div class="donor-detail-item">
-                            <span>📍</span> Trichy, Tamil Nadu
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🎂</span> 25 Years Old
-                        </div>
-                        <div class="donor-detail-item">
-                            <span>🕒</span> Last Donated: 4 months ago
-                        </div>
-                    </div>
-                    <a href="tel:+919876543215" class="btn contact-btn">Contact Donor</a>
-                </div>
-
+            <h2 style="color: #e74c3c; margin-top: 50px; margin-bottom: 20px;">Blood Donors</h2>
+            <div id="blood-donors-list" class="donor-grid" style="min-height: 100px;">
+                <!-- Dynamic Content -->
+                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading blood donors...</p>
             </div>
         </section>
     </main>

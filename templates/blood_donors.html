@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Blood Donors | LifeLink</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-main: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">
+            Life<span>Link</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="blood_donors.html" class="active" style="color: var(--primary-color);">Find Donors</a>
+            </li>
+            <li><a href="#">Hospitals</a></li>
+            <li><a href="#">About Us</a></li>
+        </ul>
+        <div class="auth-buttons">
+            <a href="login.html" class="btn" id="login-btn">Login / Register</a>
+            <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
+                <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
+                <button id="logout-btn" class="btn btn-secondary"
+                    style="padding: 8px 15px; font-size: 0.9rem;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <section class="page-header">
+            <h1>Find Donors</h1>
+            <p style="color: #8b949e; margin-top: 10px;">Find available organ and blood donors in your area.</p>
+            <div class="search-container">
+                <input type="text" id="districtSearch" class="search-bar"
+                    placeholder="Search by District (e.g. Chennai, Salem)...">
+            </div>
+        </section>
+
+        <section class="donors-container">
+            <h2 style="color: var(--primary-color); margin-bottom: 20px;">Organ Donors</h2>
+            <div id="organ-donors-list" class="donor-grid" style="min-height: 100px;">
+                <!-- Dynamic Content -->
+                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading organ donors...</p>
+            </div>
+
+            <h2 style="color: #e74c3c; margin-top: 50px; margin-bottom: 20px;">Blood Donors</h2>
+            <div id="blood-donors-list" class="donor-grid" style="min-height: 100px;">
+                <!-- Dynamic Content -->
+                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading blood donors...</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/main.js"></script>
+
+</body>
+
+</html>

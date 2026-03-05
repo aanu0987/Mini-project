@@ -64,6 +64,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleInput = document.getElementById('user-role');
 
     if (tabBtns.length > 0) {
+        const toggleRoleFields = (role) => {
+            const donorFields = document.getElementById('donor-only-fields');
+            const hospitalFields = document.getElementById('hospital-only-fields');
+            const phoneLabel = document.getElementById('phone-label');
+            const identifierLabel = document.getElementById('identifier-label');
+            const identifierInput = document.getElementById('identifier');
+            const fullnameInput = document.getElementById('fullname');
+            const aadharInput = document.getElementById('aadhar');
+            const weightInput = document.getElementById('weight');
+            const dobInput = document.getElementById('dob');
+            const hospitalNameInput = document.getElementById('hospital-name');
+
+            if (role === 'donor') {
+                if (donorFields) donorFields.style.display = 'block';
+                if (hospitalFields) hospitalFields.style.display = 'none';
+                if (phoneLabel) phoneLabel.innerText = 'Mobile Number';
+                if (identifierLabel) identifierLabel.innerText = 'Email Address';
+                if (identifierInput) identifierInput.placeholder = 'name@example.com';
+
+                if (fullnameInput) fullnameInput.required = true;
+                if (aadharInput) aadharInput.required = true;
+                if (weightInput) weightInput.required = true;
+                if (dobInput) dobInput.required = true;
+                if (hospitalNameInput) hospitalNameInput.required = false;
+            } else {
+                if (donorFields) donorFields.style.display = 'none';
+                if (hospitalFields) hospitalFields.style.display = 'block';
+                if (phoneLabel) phoneLabel.innerText = 'Contact Number';
+                if (identifierLabel) identifierLabel.innerText = 'Hospital ID';
+                if (identifierInput) identifierInput.placeholder = 'HOSP1234';
+
+                if (fullnameInput) fullnameInput.required = false;
+                if (aadharInput) aadharInput.required = false;
+                if (weightInput) weightInput.required = false;
+                if (dobInput) dobInput.required = false;
+                if (hospitalNameInput) hospitalNameInput.required = true;
+            }
+        };
+
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 // Remove active class from all
@@ -77,33 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 console.log(`Switched to ${role} login`);
 
-                // Toggle fields based on role
-                const donorFields = document.getElementById('donor-only-fields');
-                const hospitalFields = document.getElementById('hospital-only-fields');
-                const phoneLabel = document.getElementById('phone-label');
-                const identifierLabel = document.getElementById('identifier-label');
-                const identifierInput = document.getElementById('identifier');
-
-                if (role === 'donor') {
-                    if (donorFields) donorFields.style.display = 'block';
-                    if (hospitalFields) hospitalFields.style.display = 'none';
-                    if (phoneLabel) phoneLabel.innerText = "Mobile Number";
-
-                    // For Login Page
-                    if (identifierLabel) identifierLabel.innerText = "Email Address";
-                    if (identifierInput) identifierInput.placeholder = "name@example.com";
-
-                } else { // Hospital
-                    if (donorFields) donorFields.style.display = 'none';
-                    if (hospitalFields) hospitalFields.style.display = 'block';
-                    if (phoneLabel) phoneLabel.innerText = "Contact Number";
-
-                    // For Login Page
-                    if (identifierLabel) identifierLabel.innerText = "Hospital ID";
-                    if (identifierInput) identifierInput.placeholder = "HOSP1234";
-                }
+                toggleRoleFields(role);
             });
         });
+
+        if (roleInput) {
+            toggleRoleFields(roleInput.value);
+        }
     }
 
     // Donor Search Functionality

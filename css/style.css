@@ -1,7 +1,7 @@
 :root {
     --bg-color: #0d1117;
     --text-color: #f0f6fc;
-    --primary-color: #2f81f7;
+    --primary-color: #f30a31;
     --secondary-color: #2ea043;
     --accent-color: #a371f7;
     --glass-bg: rgba(22, 27, 34, 0.7);
@@ -53,10 +53,9 @@ h3 {
 h1 {
     font-size: 3.5rem;
     background: linear-gradient(120deg, var(--primary-color), var(--accent-color));
-    /* -webkit-background-clip: text; */
+    -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     line-height: 1.2;
-
 }
 
 a {

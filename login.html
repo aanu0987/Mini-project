@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<<<<<<< HEAD
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | LifeLink</title>
@@ -62,16 +61,14 @@
         .toggle-password:hover {
             color: var(--primary-color);
         }
+        
+        hr {
+            margin: 20px 0;
+            border-color: #333;
+        }
     </style>
-=======
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login | LifeLink</title>
-  <link rel="stylesheet" href="/css/style.css" />
->>>>>>> 8fdc6419965a389e519d555259ecf47be6c7e872
 </head>
 <body>
-<<<<<<< HEAD
     <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">
@@ -96,14 +93,22 @@
             </div>
 
             <!-- Login Form -->
-            <form id="loginForm" action="#">
+            <form id="loginForm">
                 <input type="hidden" id="user-role" name="role" value="donor">
 
-                <div class="form-group">
-                    <label for="identifier" id="identifier-label">Email Address</label>
-                    <input type="text" id="identifier" required placeholder="name@example.com">
+                <!-- Admin Email Field (hidden by default) -->
+                <div class="form-group" id="admin-email-group" style="display:none;">
+                    <label for="admin-email">Email</label>
+                    <input type="email" id="admin-email" placeholder="admin@example.com">
                 </div>
 
+                <!-- Login ID Field (for donors/hospitals) -->
+                <div class="form-group" id="login-id-group">
+                    <label for="identifier" id="identifier-label">Email Address</label>
+                    <input type="text" id="identifier" required placeholder="Enter your email or login ID">
+                </div>
+
+                <!-- Password Field -->
                 <div class="form-group">
                     <label for="password">Password</label>
                     <div class="password-input-wrapper">
@@ -123,58 +128,35 @@
                 Don't have an account? <a href="register.html">Register here</a>
             </div>
 
+            <!-- Admin Registration Section -->
+            <hr>
+            <h3 style="text-align:center; margin-bottom:15px;">Admin Registration</h3>
+            <form id="adminRegisterForm">
+                <div class="form-group">
+                    <label for="admin-name">Full Name</label>
+                    <input type="text" id="admin-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-register-email">Email</label>
+                    <input type="email" id="admin-register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="admin-register-password">Password</label>
+                    <input type="password" id="admin-register-password" required>
+                </div>
+                <button class="btn btn-secondary" type="submit" style="width:100%">Register Admin</button>
+            </form>
+
             <!-- Demo Credentials -->
             <div class="demo-credentials">
                 <p><strong>Demo Credentials:</strong></p>
-                <small>Donor: donor@example.com / password123</small><br>
-                <small>Hospital: HOSP1234 / password123</small><br>
+                <small>Donor: Use login ID (e.g., DON123456) / password</small><br>
+                <small>Hospital: Use login ID (e.g., HSP123456) / password</small><br>
                 <small>Admin: admin@lifelink.com / admin123</small>
             </div>
-=======
-  <nav class="navbar">
-    <div class="logo"><a href="index.html" style="color:white;text-decoration:none;">Life<span>Link</span></a></div>
-    <a href="index.html" class="btn btn-secondary">Back to Home</a>
-  </nav>
-
-  <div class="auth-container">
-    <div class="glass-panel auth-box">
-      <h2 style="text-align:center">Login</h2>
-      <div class="auth-tabs">
-        <button class="tab-btn active" data-role="donor">Blood Donor</button>
-        <button class="tab-btn" data-role="hospital">Hospital</button>
-        <button class="tab-btn" data-role="admin">Admin</button>
-      </div>
-
-      <form id="loginForm">
-        <input type="hidden" id="user-role" value="donor" />
-        <div class="form-group" id="admin-email-group" style="display:none;">
-          <label>Email</label>
-          <input type="email" id="admin-email" placeholder="admin@example.com" />
         </div>
-        <div class="form-group" id="login-id-group">
-          <label id="identifier-label">Generated Login ID</label>
-          <input type="text" id="login-id" placeholder="DON123456 / HSP123456" />
->>>>>>> 8fdc6419965a389e519d555259ecf47be6c7e872
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="login-password" required />
-        </div>
-        <button class="btn" type="submit" style="width:100%;">Sign In</button>
-      </form>
-
-      <hr style="margin: 20px 0; border-color: #333;">
-      <h3>Admin Registration</h3>
-      <form id="adminRegisterForm">
-        <div class="form-group"><label>Full Name</label><input type="text" id="admin-name"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="admin-register-email"></div>
-        <div class="form-group"><label>Password</label><input type="password" id="admin-register-password"></div>
-        <button class="btn btn-secondary" type="submit" style="width:100%">Register Admin</button>
-      </form>
     </div>
-  </div>
 
-<<<<<<< HEAD
     <!-- Footer -->
     <footer>
         <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
@@ -201,6 +183,8 @@
             const roleInput = document.getElementById('user-role');
             const identifierLabel = document.getElementById('identifier-label');
             const identifierInput = document.getElementById('identifier');
+            const adminEmailGroup = document.getElementById('admin-email-group');
+            const loginIdGroup = document.getElementById('login-id-group');
 
             tabBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -214,18 +198,27 @@
                     roleInput.value = role;
 
                     // Update identifier label and placeholder based on role
-                    if (role === 'donor') {
-                        identifierLabel.textContent = 'Email Address';
-                        identifierInput.placeholder = 'name@example.com';
+                    if (role === 'admin') {
+                        identifierLabel.textContent = 'Email';
+                        identifierInput.placeholder = 'admin@example.com';
                         identifierInput.type = 'email';
-                    } else if (role === 'hospital') {
-                        identifierLabel.textContent = 'Hospital ID';
-                        identifierInput.placeholder = 'HOSP1234';
-                        identifierInput.type = 'text';
-                    } else if (role === 'admin') {
-                        identifierLabel.textContent = 'Admin Email';
-                        identifierInput.placeholder = 'admin@hospital.com';
-                        identifierInput.type = 'email';
+                        // Show admin email field, hide login ID field
+                        adminEmailGroup.style.display = 'block';
+                        loginIdGroup.style.display = 'none';
+                    } else {
+                        // Show login ID field, hide admin email field
+                        adminEmailGroup.style.display = 'none';
+                        loginIdGroup.style.display = 'block';
+                        
+                        if (role === 'donor') {
+                            identifierLabel.textContent = 'Login ID or Email';
+                            identifierInput.placeholder = 'DON123456 or email@example.com';
+                            identifierInput.type = 'text';
+                        } else if (role === 'hospital') {
+                            identifierLabel.textContent = 'Login ID or Email';
+                            identifierInput.placeholder = 'HSP123456 or email@example.com';
+                            identifierInput.type = 'text';
+                        }
                     }
                 });
             });
@@ -237,8 +230,14 @@
                     e.preventDefault();
 
                     const role = document.getElementById('user-role').value;
-                    const identifier = document.getElementById('identifier').value;
                     const password = document.getElementById('password').value;
+                    
+                    let identifier;
+                    if (role === 'admin') {
+                        identifier = document.getElementById('admin-email').value;
+                    } else {
+                        identifier = document.getElementById('identifier').value;
+                    }
 
                     // Simple validation
                     if (!identifier || !password) {
@@ -247,17 +246,23 @@
                     }
 
                     try {
-                        const response = await fetch('http://localhost:5000/login', {
+                        const response = await fetch('http://localhost:5000/auth/login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ role, identifier, password }),
+                            body: JSON.stringify({ 
+                                role, 
+                                login_id: identifier,
+                                email: role === 'admin' ? identifier : undefined,
+                                password 
+                            }),
                             credentials: 'include'
                         });
 
                         const data = await response.json();
 
                         if (response.ok) {
-                            // Save user info
+                            // Save user info and token
+                            localStorage.setItem('token', data.token);
                             localStorage.setItem('user', JSON.stringify(data.user));
                             localStorage.setItem('role', role);
 
@@ -265,14 +270,49 @@
                             
                             // Redirect based on role
                             if (role === 'admin') {
-                                window.location.href = 'dashboard.html';
+                                window.location.href = 'admin-dashboard.html';
                             } else if (role === 'hospital') {
-                                window.location.href = 'dashboard.html';
+                                window.location.href = 'hospital-dashboard.html';
                             } else {
-                                window.location.href = 'index.html';
+                                window.location.href = 'donor-dashboard.html';
                             }
                         } else {
                             alert('Login Failed: ' + (data.error || 'Invalid credentials'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Connection Error: Please make sure the backend server is running on port 5000');
+                    }
+                });
+            }
+
+            // Admin registration form submission
+            const adminRegisterForm = document.getElementById('adminRegisterForm');
+            if (adminRegisterForm) {
+                adminRegisterForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const fullname = document.getElementById('admin-name').value;
+                    const email = document.getElementById('admin-register-email').value;
+                    const password = document.getElementById('admin-register-password').value;
+
+                    try {
+                        const response = await fetch('http://localhost:5000/auth/admin/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fullname, email, password })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            alert('Admin registered successfully! You can now login.');
+                            // Clear form
+                            document.getElementById('admin-name').value = '';
+                            document.getElementById('admin-register-email').value = '';
+                            document.getElementById('admin-register-password').value = '';
+                        } else {
+                            alert('Registration failed: ' + (data.error || 'Unknown error'));
                         }
                     } catch (error) {
                         console.error('Error:', error);
@@ -284,8 +324,3 @@
     </script>
 </body>
 </html>
-=======
-  <script src="/js/main.js"></script>
-</body>
-</html>
->>>>>>> 8fdc6419965a389e519d555259ecf47be6c7e872

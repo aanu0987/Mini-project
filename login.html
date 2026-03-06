@@ -1,69 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | LifeLink</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | LifeLink</title>
+  <link rel="stylesheet" href="/css/style.css" />
 </head>
-
 <body>
+  <nav class="navbar">
+    <div class="logo"><a href="index.html" style="color:white;text-decoration:none;">Life<span>Link</span></a></div>
+    <a href="index.html" class="btn btn-secondary">Back to Home</a>
+  </nav>
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="logo">
-            <a href="index.html" style="color:white; text-decoration:none;">Life<span>Link</span></a>
+  <div class="auth-container">
+    <div class="glass-panel auth-box">
+      <h2 style="text-align:center">Login</h2>
+      <div class="auth-tabs">
+        <button class="tab-btn active" data-role="donor">Blood Donor</button>
+        <button class="tab-btn" data-role="hospital">Hospital</button>
+        <button class="tab-btn" data-role="admin">Admin</button>
+      </div>
+
+      <form id="loginForm">
+        <input type="hidden" id="user-role" value="donor" />
+        <div class="form-group" id="admin-email-group" style="display:none;">
+          <label>Email</label>
+          <input type="email" id="admin-email" placeholder="admin@example.com" />
         </div>
-        <a href="index.html" class="btn btn-secondary" style="padding: 8px 16px; font-size:0.8rem;">Back to Home</a>
-    </nav>
-
-    <!-- Login Content -->
-    <div class="auth-container">
-        <div class="glass-panel auth-box">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h2>Welcome Back</h2>
-                <p style="color: #8b949e;">Please login to continue</p>
-            </div>
-
-            <!-- Role Switcher -->
-            <div class="auth-tabs">
-                <button class="tab-btn active" data-role="donor">Donor</button>
-                <button class="tab-btn" data-role="hospital">Hospital</button>
-            </div>
-
-            <!-- Login Form -->
-            <form action="#">
-                <input type="hidden" id="user-role" name="role" value="donor">
-
-                <div class="form-group">
-                    <label for="identifier" id="identifier-label">Email Address</label>
-                    <input type="text" id="identifier" required placeholder="name@example.com">
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" required placeholder="••••••••">
-                </div>
-
-                <button type="submit" class="btn" style="width: 100%;">Sign In</button>
-            </form>
-
-            <div class="auth-footer">
-                Don't have an account? <a href="register.html">Register here</a>
-            </div>
+        <div class="form-group" id="login-id-group">
+          <label id="identifier-label">Generated Login ID</label>
+          <input type="text" id="login-id" placeholder="DON123456 / HSP123456" />
         </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" required />
+        </div>
+        <button class="btn" type="submit" style="width:100%;">Sign In</button>
+      </form>
+
+      <hr style="margin: 20px 0; border-color: #333;">
+      <h3>Admin Registration</h3>
+      <form id="adminRegisterForm">
+        <div class="form-group"><label>Full Name</label><input type="text" id="admin-name"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="admin-register-email"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="admin-register-password"></div>
+        <button class="btn btn-secondary" type="submit" style="width:100%">Register Admin</button>
+      </form>
     </div>
+  </div>
 
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 2024 LifeLink Organ Donation Platform.</p>
-    </footer>
-
-    <script src="/js/main.js"></script>
+  <script src="/js/main.js"></script>
 </body>
-
 </html>

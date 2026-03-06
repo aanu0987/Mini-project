@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LifeLink</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Dashboard Specific Styles */
+        .dashboard-container {
+            padding: 2rem 5%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-header {
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 16px;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card.blood {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        
+        .stat-card.organ {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+        
+        .stat-card.hospital {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th,
+        .table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #8b949e;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+        
+        .badge-danger {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+        
+        .badge-warning {
+            background: rgba(241, 196, 15, 0.2);
+            color: #f1c40f;
+        }
+        
+        .badge-info {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+        }
+        
+        .badge-secondary {
+            background: rgba(149, 165, 166, 0.2);
+            color: #95a5a6;
+        }
+        
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+        
+        .progress {
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--bg-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .close {
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #8b949e;
+        }
+        
+        .close:hover {
+            color: var(--primary-color);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+        
+        .log-entry {
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            transition: background 0.3s;
+        }
+        
+        .log-entry:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .log-time {
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 768px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .table {
+                font-size: 0.9rem;
+            }
+            
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">
+            <a href="index.html" style="color:white; text-decoration:none;">Life<span>Link</span></a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="blood_donors.html">Find Donors</a></li>
+            <li><a href="#" id="dashboard-link" style="color: var(--primary-color);">Dashboard</a></li>
+            <li><a href="#">About Us</a></li>
+        </ul>
+        <div class="auth-buttons">
+            <a href="login.html" class="btn" id="login-btn">Login / Register</a>
+            <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
+                <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
+                <a href="logout.html" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        <div class="dashboard-container" id="dashboard-container">
+            <!-- Content will be loaded dynamically based on user role -->
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+
+    <!-- Add User Modal -->
+    <div class="modal" id="addUserModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New User</h3>
+                <span class="close" onclick="closeModal('addUserModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="form-group">
+                        <label>User Type</label>
+                        <select class="form-control" name="user_type" required>
+                            <option value="donor">Donor</option>
+                            <option value="hospital">Hospital</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" class="form-control" name="fullname" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" class="form-control" name="city" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Add User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blood Request Modal -->
+    <div class="modal" id="bloodRequestModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Request Blood</h3>
+                <span class="close" onclick="closeModal('bloodRequestModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="bloodRequestForm">
+                    <div class="form-group">
+                        <label>Blood Group</label>
+                        <select class="form-control" name="blood_group" required>
+                            <option value="">Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity (units)</label>
+                        <input type="number" class="form-control" name="quantity" min="1" max="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Urgency Level</label>
+                        <select class="form-control" name="urgency">
+                            <option value="normal">Normal</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="emergency">Emergency</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Patient Name (if known)</label>
+                        <input type="text" class="form-control" name="patient_name">
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Notes</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Submit Request</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const userStr = localStorage.getItem('user');
+            const role = localStorage.getItem('role');
+            
+            if (!userStr) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const user = JSON.parse(userStr);
+            document.getElementById('dashboard-link').textContent = role === 'hospital' ? 'Hospital Dashboard' : 
+                                                                   role === 'admin' ? 'Admin Dashboard' : 'Dashboard';
+            
+            // Load appropriate dashboard
+            if (role === 'admin') {
+                loadAdminDashboard(user);
+            } else if (role === 'hospital') {
+                loadHospitalDashboard(user);
+            } else {
+                loadDonorDashboard(user);
+            }
+        });
+        
+        async function loadAdminDashboard(user) {
+            const container = document.getElementById('dashboard-container');
+            
+            try {
+                // Fetch real data from API
+                const [statsRes, usersRes, pendingRes, logsRes, donationsRes] = await Promise.all([
+                    fetch('http://localhost:5000/api/stats'),
+                    fetch('http://localhost:5000/api/users'),
+                    fetch('http://localhost:5000/api/pending-hospitals'),
+                    fetch('http://localhost:5000/api/system-logs'),
+                    fetch('http://localhost:5000/api/recent-donations')
+                ]);
+                
+                const stats = await statsRes.json();
+                const users = await usersRes.json();
+                const pendingHospitals = await pendingRes.json();
+                const logs = await logsRes.json();
+                const donations = await donationsRes.json();
+                
+                container.innerHTML = `
+                    <!-- Admin Dashboard -->
+                    <div class="dashboard-header">
+                        <h1>Admin Dashboard</h1>
+                        <p>Welcome back, ${user.fullname}. Here's your system overview.</p>
+                    </div>
+                    
+                    <!-- Statistics Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.donors || 0}</div>
+                            <div class="stat-label">Total Donors</div>
+                        </div>
+                        <div class="stat-card blood">
+                            <div class="stat-value">${stats.hospitals || 0}</div>
+                            <div class="stat-label">Partner Hospitals</div>
+                        </div>
+                        <div class="stat-card organ">
+                            <div class="stat-value">${stats.donations || 0}</div>
+                            <div class="stat-label">Total Donations</div>
+                        </div>
+                        <div class="stat-card hospital">
+                            <div class="stat-value">${pendingHospitals.length || 0}</div>
+                            <div class="stat-label">Pending Verifications</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="row">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                    <button class="btn btn-primary" onclick="showAddUserModal()">
+                                        <i class="fas fa-user-plus"></i> Add New User
+                                    </button>
+                                    <button class="btn btn-success" onclick="generateReport()">
+                                        <i class="fas fa-file-alt"></i> Generate Report
+                                    </button>
+                                    <button class="btn btn-info" onclick="window.location.href='blood_donors.html'">
+                                        <i class="fas fa-search"></i> View All Donors
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- System Health -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">System Health</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="margin-bottom: 1rem;">
+                                    <p><i class="fas fa-circle" style="color: #2ecc71;"></i> Database: <strong>Connected</strong></p>
+                                    <p><i class="fas fa-circle" style="color: #2ecc71;"></i> Server: <strong>Running</strong></p>
+                                    <p><i class="fas fa-circle" style="color: #f1c40f;"></i> Storage: <strong>65% Used</strong></p>
+                                    <p><i class="fas fa-circle" style="color: #2ecc71;"></i> API: <strong>Operational</strong></p>
+                                </div>
+                                <p class="text-muted">Last backup: Today, ${new Date().toLocaleTimeString()}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Management -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">User Management</h3>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" class="form-control" placeholder="Search users..." id="userSearch" style="width: 300px;">
+                                <select class="form-control" id="userTypeFilter" style="width: 150px;">
+                                    <option value="all">All Users</option>
+                                    <option value="donor">Donors</option>
+                                    <option value="hospital">Hospitals</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="usersTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Type</th>
+                                            <th>City</th>
+                                            <th>Status</th>
+                                            <th>Joined</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${users.map(u => `
+                                            <tr data-user-type="${u.user_type}">
+                                                <td>${u.fullname}</td>
+                                                <td>${u.email}</td>
+                                                <td>
+                                                    <span class="badge ${u.user_type === 'donor' ? 'badge-danger' : 'badge-success'}">
+                                                        ${u.user_type.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td>${u.city || 'N/A'}</td>
+                                                <td>
+                                                    <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">
+                                                        ${u.is_verified ? 'Verified' : 'Pending'}
+                                                    </span>
+                                                </td>
+                                                <td>${new Date(u.registeredDate).toLocaleDateString()}</td>
+                                                <td>
+                                                    <div style="display: flex; gap: 0.25rem;">
+                                                        <button class="btn btn-secondary btn-sm" onclick="viewUser('${u._id}')">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pending Hospital Verifications -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Pending Hospital Verifications</h3>
+                            <span class="badge badge-danger">${pendingHospitals.length}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Hospital Name</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>City</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${pendingHospitals.map(h => `
+                                            <tr>
+                                                <td>${h.fullname}</td>
+                                                <td>${h.email}</td>
+                                                <td>${h.phone}</td>
+                                                <td>${h.city || 'N/A'}</td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm" onclick="verifyHospital('${h._id}')">
+                                                        Verify
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                        ${pendingHospitals.length === 0 ? `
+                                            <tr>
+                                                <td colspan="5" style="text-align: center;">No pending verifications</td>
+                                            </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Activities -->
+                    <div class="row">
+                        <!-- Recent Donations -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Recent Donations</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Donor</th>
+                                                <th>Type</th>
+                                                <th>Date</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${donations.map(d => `
+                                                <tr>
+                                                    <td>${d.donor_name || 'Unknown'}</td>
+                                                    <td><span class="badge ${d.donation_type === 'blood' ? 'badge-danger' : 'badge-success'}">${d.donation_type}</span></td>
+                                                    <td>${new Date(d.donation_date).toLocaleDateString()}</td>
+                                                    <td><span class="badge badge-success">${d.status || 'Completed'}</span></td>
+                                                </tr>
+                                            `).join('')}
+                                            ${donations.length === 0 ? `
+                                                <tr>
+                                                    <td colspan="4" style="text-align: center;">No donations yet</td>
+                                                </tr>
+                                            ` : ''}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- System Logs -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">System Logs</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="max-height: 300px; overflow-y: auto;">
+                                    ${logs.map(log => `
+                                        <div class="log-entry">
+                                            <small class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</small>
+                                            <p style="margin: 0.25rem 0 0;">${log.description}</p>
+                                        </div>
+                                    `).join('')}
+                                    ${logs.length === 0 ? `
+                                        <p style="text-align: center;">No logs available</p>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                setupUserSearch();
+                
+            } catch (error) {
+                console.error('Error loading admin dashboard:', error);
+                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading dashboard. Please refresh.</p>';
+            }
+        }
+        
+        async function loadHospitalDashboard(user) {
+            const container = document.getElementById('dashboard-container');
+            
+            try {
+                const hospitalId = user.hospital_id;
+                const response = await fetch(`http://localhost:5000/api/hospital/${hospitalId}`);
+                const data = await response.json();
+                
+                const inventory = data.inventory?.blood_inventory || {};
+                const requests = data.requests || [];
+                const donors = data.donors || [];
+                
+                container.innerHTML = `
+                    <!-- Hospital Dashboard -->
+                    <div class="dashboard-header" style="background: linear-gradient(135deg, #27ae60, #229954);">
+                        <h1>${data.hospital.fullname}</h1>
+                        <p>Hospital ID: ${hospitalId}</p>
+                        <p>Status: 
+                            <span class="badge ${data.hospital.verified ? 'badge-success' : 'badge-warning'}">
+                                ${data.hospital.verified ? 'Verified' : 'Pending Verification'}
+                            </span>
+                        </p>
+                    </div>
+                    
+                    <!-- Hospital Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card hospital">
+                            <div class="stat-value">${donors.length}</div>
+                            <div class="stat-label">Available Donors</div>
+                        </div>
+                        <div class="stat-card blood">
+                            <div class="stat-value">${requests.filter(r => r.status === 'pending').length}</div>
+                            <div class="stat-label">Pending Requests</div>
+                        </div>
+                        <div class="stat-card organ">
+                            <div class="stat-value">${Object.values(inventory).reduce((a, b) => a + b, 0)}</div>
+                            <div class="stat-label">Blood Units</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">45</div>
+                            <div class="stat-label">Completed Donations</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="row">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                    <button class="btn btn-primary" onclick="openBloodRequestModal()">
+                                        <i class="fas fa-tint"></i> Request Blood
+                                    </button>
+                                    <button class="btn btn-success" onclick="openOrganRequestModal()">
+                                        <i class="fas fa-heart"></i> Request Organ
+                                    </button>
+                                    <button class="btn btn-info" onclick="updateInventory()">
+                                        <i class="fas fa-boxes"></i> Update Inventory
+                                    </button>
+                                    <button class="btn btn-warning" onclick="window.location.href='blood_donors.html'">
+                                        <i class="fas fa-search"></i> Find Donors
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Blood Inventory -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Blood Inventory</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: grid; gap: 1rem;">
+                                    ${Object.entries(inventory).map(([blood, quantity]) => `
+                                        <div>
+                                            <label>${blood}</label>
+                                            <div class="progress">
+                                                <div class="progress-bar" style="width: ${(quantity/50)*100}%;">
+                                                    ${quantity} units
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button class="btn btn-primary btn-sm" style="margin-top: 1rem;" onclick="manageInventory()">
+                                    Manage Inventory
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pending Requests -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Pending Donation Requests</h3>
+                            <span class="badge badge-danger">${requests.filter(r => r.status === 'pending').length}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Blood Group</th>
+                                            <th>Patient</th>
+                                            <th>Urgency</th>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${requests.filter(r => r.status === 'pending').map(r => `
+                                            <tr>
+                                                <td><span class="badge badge-danger">${r.blood_group || 'N/A'}</span></td>
+                                                <td>${r.patient_name || 'Unknown'}</td>
+                                                <td><span class="badge ${r.urgency === 'emergency' ? 'badge-danger' : 'badge-warning'}">${r.urgency || 'normal'}</span></td>
+                                                <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                                                <td>
+                                                    <button class="btn btn-success btn-sm" onclick="approveRequest('${r._id}')">Approve</button>
+                                                    <button class="btn btn-danger btn-sm" onclick="rejectRequest('${r._id}')">Reject</button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                        ${requests.filter(r => r.status === 'pending').length === 0 ? `
+                                            <tr>
+                                                <td colspan="5" style="text-align: center;">No pending requests</td>
+                                            </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Available Donors -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Available Donors in Your Area</h3>
+                            <input type="text" class="form-control" placeholder="Search donors..." style="width: 300px;" id="donorSearch">
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="donorTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Blood Group</th>
+                                            <th>Phone</th>
+                                            <th>Last Donation</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${donors.map(d => `
+                                            <tr>
+                                                <td>${d.fullname}</td>
+                                                <td><span class="badge badge-danger">${d.blood_group || 'Unknown'}</span></td>
+                                                <td>${d.phone}</td>
+                                                <td>${d.last_donation ? new Date(d.last_donation).toLocaleDateString() : 'Never'}</td>
+                                                <td>
+                                                    <button class="btn btn-primary btn-sm" onclick="contactDonor('${d._id}', '${d.phone}')">
+                                                        Contact
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                        ${donors.length === 0 ? `
+                                            <tr>
+                                                <td colspan="5" style="text-align: center;">No donors available in your area</td>
+                                            </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                setupDonorSearch();
+                
+            } catch (error) {
+                console.error('Error loading hospital dashboard:', error);
+                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading dashboard. Please refresh.</p>';
+            }
+        }
+        
+        async function loadDonorDashboard(user) {
+            const container = document.getElementById('dashboard-container');
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/recent-donations');
+                const donations = await response.json();
+                
+                container.innerHTML = `
+                    <!-- Donor Dashboard -->
+                    <div class="dashboard-header" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color));">
+                        <h1>Welcome, ${user.fullname}!</h1>
+                        <p>Your donor dashboard - track your donations and help save lives.</p>
+                    </div>
+                    
+                    <!-- Donor Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card blood">
+                            <div class="stat-value">${donations.filter(d => d.donation_type === 'blood').length}</div>
+                            <div class="stat-label">Blood Donations</div>
+                        </div>
+                        <div class="stat-card organ">
+                            <div class="stat-value">${donations.filter(d => d.donation_type === 'organ').length}</div>
+                            <div class="stat-label">Organ Donations</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${new Date().getFullYear() - new Date(user.dob).getFullYear() || 25}</div>
+                            <div class="stat-label">Age</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${user.weight || 70}</div>
+                            <div class="stat-label">Weight (kg)</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="row">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                    <button class="btn btn-primary" onclick="updateAvailability()">
+                                        <i class="fas fa-check-circle"></i> Update Availability
+                                    </button>
+                                    <button class="btn btn-success" onclick="window.location.href='blood_donors.html'">
+                                        <i class="fas fa-search"></i> Find Donation Centers
+                                    </button>
+                                    <button class="btn btn-info" onclick="viewDonationHistory()">
+                                        <i class="fas fa-history"></i> View Donation History
+                                    </button>
+                                    <button class="btn btn-warning" onclick="emergencyContact()">
+                                        <i class="fas fa-ambulance"></i> Emergency Contact
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Donor Profile -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Your Profile</h3>
+                            </div>
+                            <div class="card-body">
+                                <div style="display: grid; gap: 1rem;">
+                                    <p><strong>Name:</strong> ${user.fullname}</p>
+                                    <p><strong>Email:</strong> ${user.email}</p>
+                                    <p><strong>Phone:</strong> ${user.phone}</p>
+                                    <p><strong>Blood Group:</strong> <span class="badge badge-danger">${user.blood_group || 'Unknown'}</span></p>
+                                    <p><strong>Status:</strong> <span class="badge badge-success">Active Donor</span></p>
+                                </div>
+                                <button class="btn btn-secondary btn-sm" style="margin-top: 1rem;" onclick="editProfile()">
+                                    Edit Profile
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Donations -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Your Recent Donations</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Hospital</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${donations.map(d => `
+                                            <tr>
+                                                <td>${new Date(d.donation_date).toLocaleDateString()}</td>
+                                                <td><span class="badge ${d.donation_type === 'blood' ? 'badge-danger' : 'badge-success'}">${d.donation_type}</span></td>
+                                                <td>${d.hospital_name || 'City General Hospital'}</td>
+                                                <td><span class="badge badge-success">${d.status || 'Completed'}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                        ${donations.length === 0 ? `
+                                            <tr>
+                                                <td colspan="4" style="text-align: center;">No donations yet. Be the first to donate!</td>
+                                            </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upcoming Donation Events -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Upcoming Donation Camps</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Camp Name</th>
+                                            <th>Location</th>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>City Blood Drive</td>
+                                            <td>Central Hospital</td>
+                                            <td>${new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString()}</td>
+                                            <td><button class="btn btn-primary btn-sm">Register</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Community Donation Camp</td>
+                                            <td>Community Center</td>
+                                            <td>${new Date(Date.now() + 14*24*60*60*1000).toLocaleDateString()}</td>
+                                            <td><button class="btn btn-primary btn-sm">Register</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error loading donor dashboard:', error);
+                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading dashboard. Please refresh.</p>';
+            }
+        }
+        
+        // Helper Functions
+        function setupUserSearch() {
+            const searchInput = document.getElementById('userSearch');
+            const typeFilter = document.getElementById('userTypeFilter');
+            
+            if (searchInput) {
+                searchInput.addEventListener('keyup', filterUsers);
+            }
+            if (typeFilter) {
+                typeFilter.addEventListener('change', filterUsers);
+            }
+        }
+        
+        function filterUsers() {
+            const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
+            const typeFilter = document.getElementById('userTypeFilter')?.value || 'all';
+            const rows = document.querySelectorAll('#usersTable tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const userType = row.dataset.userType;
+                
+                const typeMatch = typeFilter === 'all' || userType === typeFilter;
+                const searchMatch = searchTerm === '' || text.includes(searchTerm);
+                
+                row.style.display = typeMatch && searchMatch ? '' : 'none';
+            });
+        }
+        
+        function setupDonorSearch() {
+            const searchInput = document.getElementById('donorSearch');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = document.querySelectorAll('#donorTable tbody tr');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(searchTerm) ? '' : 'none';
+                    });
+                });
+            }
+        }
+        
+        // Modal Functions
+        function showAddUserModal() {
+            document.getElementById('addUserModal').classList.add('active');
+        }
+        
+        function openBloodRequestModal() {
+            document.getElementById('bloodRequestModal').classList.add('active');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        
+        // API Functions
+        async function viewUser(userId) {
+            alert(`View user ${userId}`);
+        }
+        
+        async function deleteUser(userId) {
+            if (confirm('Are you sure you want to delete this user?')) {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/delete-user/${userId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        alert('User deleted successfully');
+                        location.reload();
+                    } else {
+                        alert('Error deleting user');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting user');
+                }
+            }
+        }
+        
+        async function verifyHospital(hospitalId) {
+            if (confirm('Verify this hospital?')) {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/verify-hospital/${hospitalId}`, {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        alert('Hospital verified successfully');
+                        location.reload();
+                    } else {
+                        alert('Error verifying hospital');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error verifying hospital');
+                }
+            }
+        }
+        
+        async function approveRequest(requestId) {
+            if (confirm('Approve this request?')) {
+                try {
+                    const response = await fetch('http://localhost:5000/api/approve-request', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({request_id: requestId})
+                    });
+                    
+                    if (response.ok) {
+                        alert('Request approved');
+                        location.reload();
+                    } else {
+                        alert('Error approving request');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error approving request');
+                }
+            }
+        }
+        
+        function rejectRequest(requestId) {
+            alert('Reject request: ' + requestId);
+        }
+        
+        function contactDonor(donorId, phone) {
+            window.location.href = `tel:${phone}`;
+        }
+        
+        function generateReport() {
+            alert('Report generation feature coming soon!');
+        }
+        
+        function updateAvailability() {
+            alert('Update availability feature coming soon!');
+        }
+        
+        function viewDonationHistory() {
+            alert('View donation history feature coming soon!');
+        }
+        
+        function emergencyContact() {
+            alert('Emergency contact: 108');
+        }
+        
+        function editProfile() {
+            alert('Edit profile feature coming soon!');
+        }
+        
+        function openOrganRequestModal() {
+            alert('Organ request feature coming soon!');
+        }
+        
+        function updateInventory() {
+            alert('Update inventory feature coming soon!');
+        }
+        
+        function manageInventory() {
+            alert('Manage inventory feature coming soon!');
+        }
+        
+        // Form Submissions
+        document.addEventListener('submit', async (e) => {
+            if (e.target.id === 'addUserForm') {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                data.role = data.user_type;
+                
+                try {
+                    const response = await fetch('http://localhost:5000/register', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        alert('User added successfully');
+                        closeModal('addUserModal');
+                        location.reload();
+                    } else {
+                        const error = await response.json();
+                        alert('Error: ' + error.error);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error adding user');
+                }
+            }
+            
+            if (e.target.id === 'bloodRequestForm') {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                
+                try {
+                    const response = await fetch('http://localhost:5000/api/request-blood', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        alert('Blood request submitted successfully');
+                        closeModal('bloodRequestModal');
+                        location.reload();
+                    } else {
+                        alert('Error submitting request');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error submitting request');
+                }
+            }
+        });
+        
+        // Click outside modal to close
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

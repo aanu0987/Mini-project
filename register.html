@@ -10,8 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
-<body>
 
+<body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">
@@ -40,7 +40,7 @@
 
                 <div class="form-group" id="donor-only-fields">
                     <div class="form-group">
-                        <label for="fullname">Username</label>
+                        <label for="fullname">Full Name</label>
                         <input type="text" id="fullname" required placeholder="John Doe">
                     </div>
 
@@ -58,6 +58,21 @@
                         <label for="dob">Date of Birth</label>
                         <input type="date" id="dob">
                     </div>
+
+                    <div class="form-group">
+                        <label for="blood_group">Blood Group</label>
+                        <select id="blood_group" class="form-control">
+                            <option value="">Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group" id="hospital-only-fields" style="display: none;">
@@ -65,11 +80,20 @@
                         <label for="hospital-name">Hospital Name</label>
                         <input type="text" id="hospital-name" placeholder="City General Hospital">
                     </div>
+                    <div class="form-group">
+                        <label for="license_number">License Number</label>
+                        <input type="text" id="license_number" placeholder="License #">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <input type="text" id="city" required placeholder="e.g. Chennai, Salem">
                 </div>
 
                 <div class="form-group">
                     <label for="phone" id="phone-label">Mobile Number</label>
-                    <input type="tel" id="phone" required placeholder="+1 234 567 890">
+                    <input type="tel" id="phone" required placeholder="9876543210">
                 </div>
 
                 <div class="form-group">

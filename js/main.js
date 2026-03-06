@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Check for active session
     checkSession();
 
     function checkSession() {
@@ -8,58 +7,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const userProfile = document.getElementById('user-profile');
         const userNameSpan = document.getElementById('user-name');
         const logoutBtn = document.getElementById('logout-btn');
+        const dashboardLink = document.getElementById('dashboard-link');
 
         if (userStr) {
             const user = JSON.parse(userStr);
             if (loginBtn) loginBtn.style.display = 'none';
             if (userProfile) {
                 userProfile.style.display = 'flex';
-                userNameSpan.innerText = `Welcome, ${user.fullname || user.name}`; // Handles both structures
+                userNameSpan.innerText = `Welcome, ${user.fullname || user.name}`;
             }
 
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    localStorage.removeItem('user');
-                    localStorage.removeItem('role');
-                    alert('Logged out successfully');
-                    window.location.href = 'index.html';
-                });
+            if (dashboardLink) {
+                const role = localStorage.getItem('role');
+                if (role === 'hospital') {
+                    dashboardLink.textContent = 'Hospital Dashboard';
+                } else if (role === 'admin') {
+                    dashboardLink.textContent = 'Admin Dashboard';
+                } else {
+                    dashboardLink.textContent = 'My Dashboard';
+                }
             }
         }
     }
 
-    // Animate stats numbers
-    const stats = document.querySelectorAll('.stat-number');
-
-    const animateValue = (obj, start, end, duration) => {
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        window.requestAnimationFrame(step);
-    };
-
-    // Simulate different stats for demo purposes
-    // In a real app, these would come from a backend API
-    const targets = {
-        'donors': 12543,
-        'hospitals': 487,
-        'saved': 8932
-    };
-
-    stats.forEach(stat => {
-        const type = stat.getAttribute('data-target');
-        if (targets[type]) {
-            animateValue(stat, 0, targets[type], 2000);
-        }
-    });
-
-    // Login Tab Switching
+    // Tab switching
     const tabBtns = document.querySelectorAll('.tab-btn');
     const roleInput = document.getElementById('user-role');
 
@@ -75,6 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const weightInput = document.getElementById('weight');
             const dobInput = document.getElementById('dob');
             const hospitalNameInput = document.getElementById('hospital-name');
+            const licenseInput = document.getElementById('license_number');
+            const bloodGroupSelect = document.getElementById('blood_group');
 
             if (role === 'donor') {
                 if (donorFields) donorFields.style.display = 'block';
@@ -82,40 +55,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (phoneLabel) phoneLabel.innerText = 'Mobile Number';
                 if (identifierLabel) identifierLabel.innerText = 'Email Address';
                 if (identifierInput) identifierInput.placeholder = 'name@example.com';
+                if (identifierInput) identifierInput.type = 'email';
 
                 if (fullnameInput) fullnameInput.required = true;
                 if (aadharInput) aadharInput.required = true;
                 if (weightInput) weightInput.required = true;
                 if (dobInput) dobInput.required = true;
+                if (bloodGroupSelect) bloodGroupSelect.required = true;
                 if (hospitalNameInput) hospitalNameInput.required = false;
+                if (licenseInput) licenseInput.required = false;
             } else {
                 if (donorFields) donorFields.style.display = 'none';
                 if (hospitalFields) hospitalFields.style.display = 'block';
                 if (phoneLabel) phoneLabel.innerText = 'Contact Number';
                 if (identifierLabel) identifierLabel.innerText = 'Hospital ID';
                 if (identifierInput) identifierInput.placeholder = 'HOSP1234';
+                if (identifierInput) identifierInput.type = 'text';
 
                 if (fullnameInput) fullnameInput.required = false;
                 if (aadharInput) aadharInput.required = false;
                 if (weightInput) weightInput.required = false;
                 if (dobInput) dobInput.required = false;
+                if (bloodGroupSelect) bloodGroupSelect.required = false;
                 if (hospitalNameInput) hospitalNameInput.required = true;
+                if (licenseInput) licenseInput.required = true;
             }
         };
 
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                // Remove active class from all
                 tabBtns.forEach(b => b.classList.remove('active'));
-                // Add active to clicked
                 btn.classList.add('active');
-
-                // Update hidden input for form submission
                 const role = btn.getAttribute('data-role');
                 if (roleInput) roleInput.value = role;
-
-                console.log(`Switched to ${role} login`);
-
                 toggleRoleFields(role);
             });
         });
@@ -125,32 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Donor Search Functionality
-    const districtSearch = document.getElementById('districtSearch');
-    if (districtSearch) {
-        districtSearch.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const donorCards = document.querySelectorAll('.donor-card');
-
-            donorCards.forEach(card => {
-                // Find the location text within the card
-                // The structure is .donor-details -> .donor-detail-item (first one usually has location)
-                const locationItem = card.querySelector('.donor-detail-item');
-                // Or safely get all text content
-                const cardText = card.textContent.toLowerCase();
-
-                // More precise: check specifically for location icon or text if possible
-                // For now, simple text search is robust enough
-                if (cardText.includes(searchTerm)) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        });
-    }
-
-    // Registration Form Handling
+    // Registration Form
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
@@ -158,9 +105,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const role = document.getElementById('user-role').value;
             let fullname = "";
+            let license_number = "";
 
             if (role === 'hospital') {
                 fullname = document.getElementById('hospital-name').value;
+                license_number = document.getElementById('license_number')?.value || '';
             } else {
                 fullname = document.getElementById('fullname').value;
             }
@@ -168,16 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const phone = document.getElementById('phone').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const city = document.getElementById('city').value;
 
             let aadhar = null;
             let weight = null;
             let dob = null;
+            let blood_group = null;
 
-            // Get donor specific fields
             if (role === 'donor') {
                 aadhar = document.getElementById('aadhar').value;
                 weight = document.getElementById('weight').value;
                 dob = document.getElementById('dob').value;
+                blood_group = document.getElementById('blood_group').value;
             }
 
             const userData = {
@@ -186,20 +137,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 phone,
                 email,
                 password,
-                // donor_type: donorType, // donorType is not defined here, remove or define
+                city,
                 aadhar,
                 weight,
-                dob
+                dob,
+                blood_group,
+                license_number
             };
 
             try {
-                // Determine API endpoint (we use a single endpoint /register which handles both based on role)
-                // Python Flask runs on port 5000 by default
                 const response = await fetch('http://localhost:5000/register', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(userData)
                 });
 
@@ -222,11 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Login Form Handling
-    const loginForm = document.querySelector('form[action="#"]:not(#registerForm)'); // Identifying login form safely
-    // Better way: check if we are on login page or look for specific structure
-    // Since we don't have an ID on login form, let's look for the sign in button text or similar.
-    // Assuming the only other form is login form on login.html
+    // Login Form
+    const loginForm = document.querySelector('form[action="#"]:not(#registerForm)');
     const signInBtn = document.querySelector('button[type="submit"]');
 
     if (loginForm && signInBtn && signInBtn.innerText === 'Sign In') {
@@ -241,18 +187,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('http://localhost:5000/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role, identifier, password })
+                    body: JSON.stringify({ role, identifier, password }),
+                    credentials: 'include'
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Save user info (in real app us tokens)
                     localStorage.setItem('user', JSON.stringify(data.user));
                     localStorage.setItem('role', role);
 
                     alert('Login Successful!');
-                    window.location.href = 'index.html';
+                    
+                    // Redirect based on role
+                    if (role === 'admin') {
+                        window.location.href = 'dashboard.html';
+                    } else if (role === 'hospital') {
+                        window.location.href = 'dashboard.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 } else {
                     alert('Login Failed: ' + (data.error || 'Invalid credentials'));
                 }
@@ -261,77 +215,5 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Connection Error');
             }
         });
-    }
-
-    // Donor Display Logic
-    const organDonorsList = document.getElementById('organ-donors-list');
-    const bloodDonorsList = document.getElementById('blood-donors-list');
-
-    if (organDonorsList || bloodDonorsList) {
-        fetchDonors();
-    }
-
-    async function fetchDonors() {
-        try {
-            const response = await fetch('http://localhost:5000/api/donors');
-            const donors = await response.json();
-
-            if (organDonorsList) organDonorsList.innerHTML = '';
-            if (bloodDonorsList) bloodDonorsList.innerHTML = '';
-
-            if (donors.length === 0) {
-                const noDataMsg = '<p style="color: white; grid-column: 1/-1; text-align: center;">No registered donors found yet.</p>';
-                if (organDonorsList) organDonorsList.innerHTML = noDataMsg;
-                if (bloodDonorsList) bloodDonorsList.innerHTML = noDataMsg;
-                return;
-            }
-
-            donors.forEach(donor => {
-                const donorCard = createDonorCard(donor);
-                const type = donor.donor_type || 'both'; // Default back to both if undefined, though it should be set
-
-                if (type === 'organ' || type === 'both') {
-                    if (organDonorsList) organDonorsList.appendChild(donorCard.cloneNode(true));
-                }
-                if (type === 'blood' || type === 'both') {
-                    if (bloodDonorsList) bloodDonorsList.appendChild(donorCard.cloneNode(true));
-                }
-            });
-
-        } catch (error) {
-            console.error('Error fetching donors:', error);
-            const errorMsg = '<p style="color: #e74c3c; grid-column: 1/-1; text-align: center;">Failed to load donors. Make sure the backend is running.</p>';
-            if (organDonorsList) organDonorsList.innerHTML = errorMsg;
-            if (bloodDonorsList) bloodDonorsList.innerHTML = errorMsg;
-        }
-    }
-
-    function createDonorCard(donor) {
-        const card = document.createElement('div');
-        card.className = 'glass-panel donor-card';
-        card.style.display = 'flex'; // Ensure it's visible by default
-
-        // Handle missing data gracefully
-        const name = donor.fullname || 'Unknown Donor';
-        const location = 'Location not set'; // We don't have location in registration yet, placeholder
-        const phone = donor.phone || 'N/A';
-        const lastDonated = 'Unknown'; // Not tracked yet
-
-        card.innerHTML = `
-            <div class="donor-header">
-                <div class="donor-name">${name}</div>
-                <div class="blood-group">?</div> 
-            </div>
-            <div class="donor-details">
-                <div class="donor-detail-item">
-                    <span>📍</span> ${location}
-                </div>
-                <div class="donor-detail-item">
-                    <span>📞</span> ${phone}
-                </div>
-            </div>
-            <a href="tel:${phone}" class="btn contact-btn">Contact Donor</a>
-        `;
-        return card;
     }
 });

@@ -9,28 +9,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
-
     <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">
             Life<span>Link</span>
         </div>
         <ul class="nav-links">
-            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html" class="active" style="color: var(--primary-color);">Home</a></li>
             <li><a href="blood_donors.html">Find Donors</a></li>
-            <li><a href="#">Hospitals</a></li>
+            <li><a href="dashboard.html" id="dashboard-link">Dashboard</a></li>
             <li><a href="#">About Us</a></li>
-
         </ul>
         <div class="auth-buttons">
             <a href="login.html" class="btn" id="login-btn">Login / Register</a>
             <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
                 <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
-                <button id="logout-btn" class="btn btn-secondary"
-                    style="padding: 8px 15px; font-size: 0.9rem;">Logout</button>
+                <a href="logout.html" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;">Logout</a>
             </div>
         </div>
     </nav>
@@ -53,31 +51,107 @@
         <section class="stats-container">
             <!-- Glass Panel 1 -->
             <div class="glass-panel stat-card">
-                <span class="stat-number" data-target="donors">0</span>
+                <span class="stat-number" id="donors-count">0</span>
                 <span class="stat-label">Registered Donors</span>
             </div>
 
             <!-- Glass Panel 2 -->
             <div class="glass-panel stat-card">
-                <span class="stat-number" data-target="hospitals">0</span>
+                <span class="stat-number" id="hospitals-count">0</span>
                 <span class="stat-label">Partner Hospitals</span>
             </div>
 
             <!-- Glass Panel 3 -->
             <div class="glass-panel stat-card">
-                <span class="stat-number" data-target="saved">0</span>
-                <span class="stat-label">Organs Received</span>
+                <span class="stat-number" id="saved-count">0</span>
+                <span class="stat-label">Lives Saved</span>
             </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section" style="padding: 4rem 5%;">
+            <h2 style="text-align: center; margin-bottom: 3rem; font-size: 2.5rem;">How It Works</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+                <div class="glass-panel" style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-user-plus" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                    <h3>Register</h3>
+                    <p style="color: #8b949e;">Sign up as a donor or hospital in minutes</p>
+                </div>
+                <div class="glass-panel" style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-search" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                    <h3>Find Matches</h3>
+                    <p style="color: #8b949e;">Search for donors or requests in your area</p>
+                </div>
+                <div class="glass-panel" style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-heart" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                    <h3>Save Lives</h3>
+                    <p style="color: #8b949e;">Connect and complete donations</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action -->
+        <section style="text-align: center; padding: 4rem 5%; background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(52, 152, 219, 0.1));">
+            <h2 style="font-size: 2rem; margin-bottom: 1rem;">Ready to Make a Difference?</h2>
+            <p style="color: #8b949e; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Join thousands of donors and hospitals in our mission to save lives through organ and blood donation.
+            </p>
+            <a href="register.html" class="btn" style="font-size: 1.1rem; padding: 1rem 2rem;">Get Started Today</a>
         </section>
     </main>
 
     <!-- Footer -->
     <footer>
-        <p>&copy;LifeLink Organ Donation Platform. All rights reserved.</p>
+        <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
     </footer>
 
     <script src="/js/main.js"></script>
-
+    <script>
+        // Fetch and update stats dynamically
+        async function updateStats() {
+            try {
+                const response = await fetch('http://localhost:5000/api/stats');
+                const stats = await response.json();
+                
+                document.getElementById('donors-count').textContent = stats.donors || 0;
+                document.getElementById('hospitals-count').textContent = stats.hospitals || 0;
+                document.getElementById('saved-count').textContent = stats.saved || 0;
+                
+                // Animate numbers
+                animateNumbers();
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+        
+        function animateNumbers() {
+            const donors = document.getElementById('donors-count');
+            const hospitals = document.getElementById('hospitals-count');
+            const saved = document.getElementById('saved-count');
+            
+            const animateValue = (element, start, end, duration) => {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    element.innerHTML = Math.floor(progress * (end - start) + start);
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            };
+            
+            animateValue(donors, 0, parseInt(donors.textContent), 2000);
+            animateValue(hospitals, 0, parseInt(hospitals.textContent), 2000);
+            animateValue(saved, 0, parseInt(saved.textContent), 2000);
+        }
+        
+        // Update stats on page load
+        document.addEventListener('DOMContentLoaded', updateStats);
+        
+        // Refresh stats every 30 seconds
+        setInterval(updateStats, 30000);
+    </script>
 </body>
-
 </html>

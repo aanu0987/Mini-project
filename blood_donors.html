@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
@@ -19,17 +20,15 @@
         </div>
         <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
-            <li><a href="blood_donors.html" class="active" style="color: var(--primary-color);">Find Donors</a>
-            </li>
-            <li><a href="#">Hospitals</a></li>
+            <li><a href="blood_donors.html" class="active" style="color: var(--primary-color);">Find Donors</a></li>
+            <li><a href="dashboard.html" id="dashboard-link">Dashboard</a></li>
             <li><a href="#">About Us</a></li>
         </ul>
         <div class="auth-buttons">
             <a href="login.html" class="btn" id="login-btn">Login / Register</a>
             <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
                 <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
-                <button id="logout-btn" class="btn btn-secondary"
-                    style="padding: 8px 15px; font-size: 0.9rem;">Logout</button>
+                <a href="logout.html" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;">Logout</a>
             </div>
         </div>
     </nav>
@@ -41,7 +40,7 @@
             <p style="color: #8b949e; margin-top: 10px;">Find available organ and blood donors in your area.</p>
             <div class="search-container">
                 <input type="text" id="districtSearch" class="search-bar"
-                    placeholder="Search by District (e.g. Chennai, Salem)...">
+                    placeholder="Search by city or location...">
             </div>
         </section>
 
@@ -66,7 +65,80 @@
     </footer>
 
     <script src="/js/main.js"></script>
+    <script>
+        // Override the fetchDonors function to use the correct endpoint
+        async function fetchDonors() {
+            const organDonorsList = document.getElementById('organ-donors-list');
+            const bloodDonorsList = document.getElementById('blood-donors-list');
 
+            try {
+                const response = await fetch('http://localhost:5000/api/donors');
+                const donors = await response.json();
+
+                if (organDonorsList) organDonorsList.innerHTML = '';
+                if (bloodDonorsList) bloodDonorsList.innerHTML = '';
+
+                if (donors.length === 0) {
+                    const noDataMsg = '<p style="color: white; grid-column: 1/-1; text-align: center;">No registered donors found yet.</p>';
+                    if (organDonorsList) organDonorsList.innerHTML = noDataMsg;
+                    if (bloodDonorsList) bloodDonorsList.innerHTML = noDataMsg;
+                    return;
+                }
+
+                donors.forEach(donor => {
+                    const donorCard = createDonorCard(donor);
+                    const type = donor.donor_type || 'both';
+
+                    if (type === 'organ' || type === 'both') {
+                        if (organDonorsList) organDonorsList.appendChild(donorCard.cloneNode(true));
+                    }
+                    if (type === 'blood' || type === 'both') {
+                        if (bloodDonorsList) bloodDonorsList.appendChild(donorCard.cloneNode(true));
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error fetching donors:', error);
+                const errorMsg = '<p style="color: #e74c3c; grid-column: 1/-1; text-align: center;">Failed to load donors. Make sure the backend is running.</p>';
+                if (organDonorsList) organDonorsList.innerHTML = errorMsg;
+                if (bloodDonorsList) bloodDonorsList.innerHTML = errorMsg;
+            }
+        }
+
+        function createDonorCard(donor) {
+            const card = document.createElement('div');
+            card.className = 'glass-panel donor-card';
+            card.style.display = 'flex';
+
+            const name = donor.fullname || 'Unknown Donor';
+            const location = donor.city || 'Location not specified';
+            const phone = donor.phone || 'N/A';
+            const bloodGroup = donor.blood_group || '?';
+            const lastDonated = donor.last_donation ? new Date(donor.last_donation).toLocaleDateString() : 'Never';
+
+            card.innerHTML = `
+                <div class="donor-header">
+                    <div class="donor-name">${name}</div>
+                    <div class="blood-group">${bloodGroup}</div>
+                </div>
+                <div class="donor-details">
+                    <div class="donor-detail-item">
+                        <span>📍</span> ${location}
+                    </div>
+                    <div class="donor-detail-item">
+                        <span>📞</span> ${phone}
+                    </div>
+                    <div class="donor-detail-item">
+                        <span>🩸</span> Last Donation: ${lastDonated}
+                    </div>
+                </div>
+                <a href="tel:${phone}" class="btn contact-btn">Contact Donor</a>
+            `;
+            return card;
+        }
+
+        // Call fetchDonors when page loads
+        document.addEventListener('DOMContentLoaded', fetchDonors);
+    </script>
 </body>
-
 </html>

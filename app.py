@@ -127,6 +127,16 @@ def serialize_user(user):
     return user
 
 
+def serialize_notification(item):
+    if not item:
+        return None
+    item["_id"] = str(item["_id"])
+    created = item.get("created_at")
+    if isinstance(created, datetime):
+        item["created_at"] = created.isoformat()
+    return item
+
+
 def notify_all_users(subject, message):
     recipients = list(donors_collection.find({"status": "approved"})) + list(
         hospitals_collection.find({"status": "approved"})
@@ -139,6 +149,16 @@ def notify_all_users(subject, message):
         if user.get("phone") and send_sms(user["phone"], message):
             sms_count += 1
     return {"email_sent": email_count, "sms_sent": sms_count}
+
+
+def create_notification(event_type, message, **extra):
+    payload = {
+        "type": event_type,
+        "message": message,
+        "created_at": datetime.utcnow(),
+    }
+    payload.update(extra)
+    notifications_collection.insert_one(payload)
 
 
 # -------------------- Auth & Registration --------------------
@@ -223,6 +243,10 @@ def register_admin():
     if not all([fullname, email, password]):
         return jsonify({"error": "Missing required fields"}), 400
 
+    existing_admin = admins_collection.find_one()
+    if existing_admin:
+        return jsonify({"error": "Admin account already exists. Only one admin is allowed."}), 400
+
     if admins_collection.find_one({"email": email}):
         return jsonify({"error": "Admin already exists"}), 400
 
@@ -288,6 +312,27 @@ def pending_users():
     return jsonify({"donors": donors, "hospitals": hospitals}), 200
 
 
+@app.route("/admin/all-users", methods=["GET"])
+def all_users():
+    _, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
+    donors = [serialize_user(d) for d in donors_collection.find().sort("created_at", -1)]
+    hospitals = [serialize_user(h) for h in hospitals_collection.find().sort("created_at", -1)]
+    return jsonify({"donors": donors, "hospitals": hospitals}), 200
+
+
+@app.route("/admin/notifications", methods=["GET"])
+def admin_notifications():
+    _, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
+    notes = [serialize_notification(n) for n in notifications_collection.find().sort("created_at", -1).limit(100)]
+    return jsonify({"notifications": notes}), 200
+
+
 @app.route("/admin/verify-user", methods=["POST"])
 def verify_user():
     _, error = get_session(required_roles=["admin"])
@@ -306,7 +351,12 @@ def verify_user():
         return jsonify({"error": "action must be approve or reject"}), 400
 
     collection = donors_collection if user_type == "donor" else hospitals_collection
-    user = collection.find_one({"_id": ObjectId(user_id)})
+    try:
+        object_id = ObjectId(user_id)
+    except Exception:
+        return jsonify({"error": "Invalid user_id"}), 400
+
+    user = collection.find_one({"_id": object_id})
     if not user:
         return jsonify({"error": "User not found"}), 404
 
@@ -322,6 +372,13 @@ def verify_user():
             "LifeLink account approved",
             f"Your account is approved. Your login ID is: {login_id}\nUse this login ID with your password to login.",
         )
+        create_notification(
+            "verification",
+            f"{user_type.title()} {user.get('fullname')} approved with login ID {login_id}",
+            user_type=user_type,
+            user_email=user.get("email"),
+            action="approved",
+        )
         return jsonify({"message": "User approved", "login_id": login_id}), 200
 
     if not rejection_reason:
@@ -335,6 +392,13 @@ def verify_user():
         user["email"],
         "LifeLink account rejected",
         f"Your account registration was rejected. Reason: {rejection_reason}",
+    )
+    create_notification(
+        "verification",
+        f"{user_type.title()} {user.get('fullname')} rejected. Reason: {rejection_reason}",
+        user_type=user_type,
+        user_email=user.get("email"),
+        action="rejected",
     )
     return jsonify({"message": "User rejected"}), 200
 
@@ -382,16 +446,13 @@ def hospital_request():
         f"Contact: {hospital.get('phone')}"
     )
 
-    notifications_collection.insert_one(
-        {
-            "hospital_id": str(hospital["_id"]),
-            "hospital_name": hospital.get("hospital_name", hospital.get("fullname")),
-            "type": "request",
-            "request_type": request_type,
-            "details": details,
-            "message": message,
-            "created_at": datetime.utcnow(),
-        }
+    create_notification(
+        "request",
+        message,
+        hospital_id=str(hospital["_id"]),
+        hospital_name=hospital.get("hospital_name", hospital.get("fullname")),
+        request_type=request_type,
+        details=details,
     )
 
     stats = notify_all_users(
@@ -422,15 +483,12 @@ def hospital_received():
         "Thank you for your timely support and generosity."
     )
 
-    notifications_collection.insert_one(
-        {
-            "hospital_id": str(hospital["_id"]),
-            "hospital_name": hospital.get("hospital_name", hospital.get("fullname")),
-            "type": "received",
-            "request_type": request_type,
-            "message": message,
-            "created_at": datetime.utcnow(),
-        }
+    create_notification(
+        "received",
+        message,
+        hospital_id=str(hospital["_id"]),
+        hospital_name=hospital.get("hospital_name", hospital.get("fullname")),
+        request_type=request_type,
     )
 
     stats = notify_all_users(

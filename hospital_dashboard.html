@@ -1,0 +1,16 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hospital Dashboard</title><link rel="stylesheet" href="/css/style.css"></head><body>
+<nav class="navbar"><div class="logo">Life<span>Link</span> Hospital</div><button id="logout-btn" class="btn btn-secondary">Logout</button></nav>
+<main class="page-header">
+  <h1>Hospital Dashboard</h1>
+  <div id="hospital-details" class="glass-panel" style="padding:20px; margin:20px 0;"></div>
+  <div class="glass-panel" style="padding:20px; margin:20px 0;">
+    <h3>Send Request Notification</h3>
+    <div class="form-group"><label>Type</label><select id="request-type"><option value="organ">Organ</option><option value="blood">Blood</option></select></div>
+    <div class="form-group"><label>Details</label><input type="text" id="request-details" placeholder="Required blood group / organ details"></div>
+    <button class="btn" id="send-request-btn">Request</button>
+    <button class="btn btn-secondary" id="send-received-btn">Received</button>
+  </div>
+  <div id="hospital-notifications"></div>
+</main>
+<script src="/js/main.js"></script>
+</body></html>

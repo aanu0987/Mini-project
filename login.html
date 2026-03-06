@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+<<<<<<< HEAD
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | LifeLink</title>
@@ -63,9 +63,15 @@
             color: var(--primary-color);
         }
     </style>
+=======
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | LifeLink</title>
+  <link rel="stylesheet" href="/css/style.css" />
+>>>>>>> 8fdc6419965a389e519d555259ecf47be6c7e872
 </head>
-
 <body>
+<<<<<<< HEAD
     <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">
@@ -124,9 +130,51 @@
                 <small>Hospital: HOSP1234 / password123</small><br>
                 <small>Admin: admin@lifelink.com / admin123</small>
             </div>
-        </div>
-    </div>
+=======
+  <nav class="navbar">
+    <div class="logo"><a href="index.html" style="color:white;text-decoration:none;">Life<span>Link</span></a></div>
+    <a href="index.html" class="btn btn-secondary">Back to Home</a>
+  </nav>
 
+  <div class="auth-container">
+    <div class="glass-panel auth-box">
+      <h2 style="text-align:center">Login</h2>
+      <div class="auth-tabs">
+        <button class="tab-btn active" data-role="donor">Blood Donor</button>
+        <button class="tab-btn" data-role="hospital">Hospital</button>
+        <button class="tab-btn" data-role="admin">Admin</button>
+      </div>
+
+      <form id="loginForm">
+        <input type="hidden" id="user-role" value="donor" />
+        <div class="form-group" id="admin-email-group" style="display:none;">
+          <label>Email</label>
+          <input type="email" id="admin-email" placeholder="admin@example.com" />
+        </div>
+        <div class="form-group" id="login-id-group">
+          <label id="identifier-label">Generated Login ID</label>
+          <input type="text" id="login-id" placeholder="DON123456 / HSP123456" />
+>>>>>>> 8fdc6419965a389e519d555259ecf47be6c7e872
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-password" required />
+        </div>
+        <button class="btn" type="submit" style="width:100%;">Sign In</button>
+      </form>
+
+      <hr style="margin: 20px 0; border-color: #333;">
+      <h3>Admin Registration</h3>
+      <form id="adminRegisterForm">
+        <div class="form-group"><label>Full Name</label><input type="text" id="admin-name"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="admin-register-email"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="admin-register-password"></div>
+        <button class="btn btn-secondary" type="submit" style="width:100%">Register Admin</button>
+      </form>
+    </div>
+  </div>
+
+<<<<<<< HEAD
     <!-- Footer -->
     <footer>
         <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
@@ -236,3 +284,8 @@
     </script>
 </body>
 </html>
+=======
+  <script src="/js/main.js"></script>
+</body>
+</html>
+>>>>>>> 8fdc6419965a389e519d555259ecf47be6c7e872

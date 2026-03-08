@@ -70,7 +70,6 @@ def send_email(recipient, subject, content):
         print(f"Email error: {e}")
         return False
 
-
 def send_welcome_email(user_email, user_name, role):
     """Send welcome email after registration"""
     if role == 'donor':

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, render_template, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
 from bson import ObjectId
@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 import os
 import smtplib
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='templates',  # HTML files go here
+            static_folder='static')        # CSS, JS files go here
 app.secret_key = 'your-secret-key-here-change-in-production'
 CORS(app, supports_credentials=True)
 
@@ -36,6 +38,40 @@ hospitals_collection = db['hospitals']
 admins_collection = db['admins']
 notifications_collection = db['notifications']
 sessions_collection = db['sessions']
+
+# -------------------- Frontend Routes --------------------
+@app.route('/')
+def index():
+    """Serve the main index page"""
+    return render_template('index.html')
+
+@app.route('/<page>')
+def serve_page(page):
+    """Serve individual HTML pages"""
+    # List of valid pages
+    valid_pages = ['blood_donors', 'dashboard', 'login', 'register', 'logout']
+    
+    if page in valid_pages:
+        return render_template(f'{page}.html')
+    
+    # If page not found, return index
+    return render_template('index.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    """Handle favicon requests"""
+    return '', 204
+
+# Serve static files (CSS, JS)
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    """Serve CSS files"""
+    return send_from_directory('static/css', filename)
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    """Serve JavaScript files"""
+    return send_from_directory('static/js', filename)
 
 # Custom JSON encoder for ObjectId
 class JSONEncoder(json.JSONEncoder):
@@ -885,4 +921,5 @@ if __name__ == '__main__':
     hospital_collection.create_index("hospital_id", unique=True)
     
     print("Server ready!")
+    print("Access the application at: http://localhost:5000")
     app.run(debug=True, port=5000)

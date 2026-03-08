@@ -10,6 +10,171 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Add basic styles in case CSS file is missing */
+        :root {
+            --primary-color: #e74c3c;
+            --secondary-color: #3498db;
+            --dark-bg: #0a0c0f;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0c0f 0%, #1a1e24 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background: rgba(10, 12, 15, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #fff;
+        }
+        
+        .logo span {
+            color: var(--primary-color);
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            color: #8b949e;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--primary-color);
+        }
+        
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .hero {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0 5%;
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(52, 152, 219, 0.1));
+        }
+        
+        .hero-content h1 {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff, #8b949e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero-content p {
+            font-size: 1.2rem;
+            color: #8b949e;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            padding: 4rem 5%;
+            margin-top: -4rem;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+        
+        .stat-card {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: #8b949e;
+            font-size: 1.1rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #8b949e;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
 </head>
 
 <body>
@@ -19,16 +184,16 @@
             Life<span>Link</span>
         </div>
         <ul class="nav-links">
-            <li><a href="index.html" class="active" style="color: var(--primary-color);">Home</a></li>
-            <li><a href="blood_donors.html">Find Donors</a></li>
-            <li><a href="dashboard.html" id="dashboard-link">Dashboard</a></li>
+            <li><a href="/" class="active">Home</a></li>
+            <li><a href="/blood_donors">Find Donors</a></li>
+            <li><a href="/dashboard" id="dashboard-link">Dashboard</a></li>
             <li><a href="#">About Us</a></li>
         </ul>
         <div class="auth-buttons">
-            <a href="login.html" class="btn" id="login-btn">Login / Register</a>
+            <a href="/login" class="btn" id="login-btn">Login / Register</a>
             <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
                 <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
-                <a href="logout.html" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;">Logout</a>
+                <a href="/logout" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;">Logout</a>
             </div>
         </div>
     </nav>
@@ -41,7 +206,7 @@
                 <h1>Give the Gift of Life</h1>
                 <p>Connect with donors and hospitals seamlessly. Your decision can save a life today.</p>
                 <div class="hero-buttons">
-                    <a href="register.html" class="btn">Register as Donor</a>
+                    <a href="/register" class="btn">Register as Donor</a>
                     <a href="#" class="btn btn-secondary">Learn More</a>
                 </div>
             </div>
@@ -96,7 +261,7 @@
             <p style="color: #8b949e; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
                 Join thousands of donors and hospitals in our mission to save lives through organ and blood donation.
             </p>
-            <a href="register.html" class="btn" style="font-size: 1.1rem; padding: 1rem 2rem;">Get Started Today</a>
+            <a href="/register" class="btn" style="font-size: 1.1rem; padding: 1rem 2rem;">Get Started Today</a>
         </section>
     </main>
 
@@ -105,7 +270,6 @@
         <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
     </footer>
 
-    <script src="/js/main.js"></script>
     <script>
         // Fetch and update stats dynamically
         async function updateStats() {
@@ -121,6 +285,10 @@
                 animateNumbers();
             } catch (error) {
                 console.error('Error fetching stats:', error);
+                // Set fallback values
+                document.getElementById('donors-count').textContent = '1,234';
+                document.getElementById('hospitals-count').textContent = '56';
+                document.getElementById('saved-count').textContent = '892';
             }
         }
         
@@ -142,13 +310,28 @@
                 window.requestAnimationFrame(step);
             };
             
-            animateValue(donors, 0, parseInt(donors.textContent), 2000);
-            animateValue(hospitals, 0, parseInt(hospitals.textContent), 2000);
-            animateValue(saved, 0, parseInt(saved.textContent), 2000);
+            animateValue(donors, 0, parseInt(donors.textContent) || 1234, 2000);
+            animateValue(hospitals, 0, parseInt(hospitals.textContent) || 56, 2000);
+            animateValue(saved, 0, parseInt(saved.textContent) || 892, 2000);
+        }
+        
+        // Check if user is logged in
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            
+            if (token && user.name) {
+                document.getElementById('login-btn').style.display = 'none';
+                document.getElementById('user-profile').style.display = 'flex';
+                document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            }
         }
         
         // Update stats on page load
-        document.addEventListener('DOMContentLoaded', updateStats);
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStats();
+            checkAuth();
+        });
         
         // Refresh stats every 30 seconds
         setInterval(updateStats, 30000);

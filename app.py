@@ -455,7 +455,7 @@ def login():
     user = collection.find_one(query)
 
     if not user:
-        return jsonify({"error": "Invalid credentials"}), 401
+        return jsonify({"error": "Register as donor or hospital"}), 401
 
     if user.get("status") != "approved":
         return jsonify({"error": f"Account is {user.get('status')}. Contact admin."}), 403

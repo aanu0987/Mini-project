@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5000';
+const API_BASE = window.location.origin;
 
 function getToken() {
   return localStorage.getItem('token');
@@ -11,11 +11,20 @@ function authHeaders() {
     : { 'Content-Type': 'application/json' };
 }
 
-function logout() {
+async function logout() {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+  } catch (_) {
+    // Ignore network errors and continue local logout.
+  }
+
   localStorage.removeItem('token');
   localStorage.removeItem('role');
   localStorage.removeItem('user');
-  window.location.href = 'login.html';
+  window.location.href = '/login';
 }
 
 document.addEventListener('DOMContentLoaded', () => {

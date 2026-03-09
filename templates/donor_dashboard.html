@@ -3,8 +3,20 @@
 <main class="page-header">
   <h1>Blood Donor Dashboard</h1>
   <div id="last-donation" class="glass-panel" style="padding:20px; margin:20px 0;"></div>
-  <h3>Hospital Requests</h3>
-  <div id="donor-notifications"></div>
+
+  <div class="glass-panel" style="padding:20px; margin:20px 0;">
+    <h3>Edit My Details</h3>
+    <form id="donor-edit-form">
+      <div class="form-group"><label>Full Name</label><input id="edit-fullname" type="text" placeholder="Enter full name"></div>
+      <div class="form-group"><label>Phone</label><input id="edit-phone" type="text" placeholder="Enter phone"></div>
+      <div class="form-group"><label>City</label><input id="edit-city" type="text" placeholder="Enter city"></div>
+      <div class="form-group"><label>Weight (kg)</label><input id="edit-weight" type="number" placeholder="Enter weight"></div>
+      <div class="form-group"><label>Blood Group</label><input id="edit-blood-group" type="text" placeholder="A+"></div>
+      <div class="form-group"><label>Last Donation Date</label><input id="edit-last-donation" type="date"></div>
+      <button class="btn" type="submit">Update My Profile</button>
+    </form>
+  </div>
+
   <h3 style="margin-top:24px;">Hospital Contact Details</h3>
   <div id="hospital-contacts"></div>
 </main>

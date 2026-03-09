@@ -264,107 +264,6 @@ def notify_all_users(subject, message):
     return {"email_sent": email_count, "sms_sent": sms_count}
 
 
-<<<<<<< HEAD
-# -------------------- Registration Endpoint --------------------
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.json
-    
-    fullname = data.get('fullname')
-    phone = data.get('phone')
-    email = data.get('email')
-    password = data.get('password')
-    role = data.get('role')
-    aadhar = data.get('aadhar')
-    weight = data.get('weight')
-    dob = data.get('dob')
-    city = data.get('city', 'Not specified')
-    blood_group = data.get('blood_group', 'Unknown')
-
-    if role == 'donor':
-        if not all([aadhar, weight, dob]):
-            return jsonify({"error": "Missing required donor fields"}), 400
-        
-        if donors_collection.find_one({"aadhar": aadhar}):
-            return jsonify({"error": "Aadhar number already registered"}), 400
-
-    if donors_collection.find_one({"email": email}) or hospital_collection.find_one({"email": email}):
-        return jsonify({"error": "Email already registered"}), 400
-
-    if donors_collection.find_one({"phone": phone}) or hospital_collection.find_one({"phone": phone}):
-        return jsonify({"error": "Mobile number already registered"}), 400
-
-    user_data = {
-        "fullname": fullname,
-        "phone": phone,
-        "email": email,
-        "password": password,
-        "role": role,
-        "city": city,
-        "registeredDate": datetime.utcnow(),
-        "is_verified": False if role == 'hospital' else True
-    }
-    
-    hospital_id = None
-
-    if role == 'donor':
-        user_data.update({
-            'aadhar': aadhar,
-            'weight': weight,
-            'dob': dob,
-            'donor_type': 'both',
-            'blood_group': blood_group,
-            'available': True,
-            'last_donation': None
-        })
-        result = donors_collection.insert_one(user_data)
-    elif role == 'hospital':
-        hospital_id = generate_hospital_id()
-        user_data.update({
-            'hospital_id': hospital_id,
-            'license_number': data.get('license_number', 'Pending'),
-            'verified': False
-        })
-        result = hospital_collection.insert_one(user_data)
-        
-        # Initialize hospital inventory
-        inventory_collection.insert_one({
-            'hospital_id': hospital_id,
-            'blood_inventory': {
-                'A+': random.randint(10, 50),
-                'A-': random.randint(5, 30),
-                'B+': random.randint(10, 40),
-                'B-': random.randint(5, 25),
-                'O+': random.randint(20, 60),
-                'O-': random.randint(5, 20),
-                'AB+': random.randint(5, 25),
-                'AB-': random.randint(2, 15)
-            },
-            'last_updated': datetime.utcnow()
-        })
-    else:
-        return jsonify({"error": "Invalid role"}), 400
-
-    email_sent = send_welcome_email(email, fullname, role)
-    
-    response_data = {
-        "message": f"{role.capitalize()} registered successfully",
-        "email_sent": email_sent,
-        "user": {
-            "name": fullname,
-            "email": email,
-            "role": role
-        }
-    }
-    
-    if hospital_id:
-        response_data['hospital_id'] = hospital_id
-    
-    return jsonify(response_data), 201
-
-
-# -------------------- Auth & Registration (New) --------------------
-=======
 def create_notification(event_type, message, **extra):
     payload = {
         "type": event_type,
@@ -376,7 +275,6 @@ def create_notification(event_type, message, **extra):
 
 
 # -------------------- Auth & Registration --------------------
->>>>>>> e658b966a62efc67cf65025d530068e2a42b32ae
 @app.route("/auth/register", methods=["POST"])
 def register_user():
     data = request.get_json() or {}
@@ -428,6 +326,9 @@ def register_user():
             return jsonify({"error": "Missing donor fields"}), 400
         if donors_collection.find_one({"aadhar": payload["aadhar"]}):
             return jsonify({"error": "Aadhar already exists"}), 400
+        payload["status"] = "approved"
+        payload["login_id"] = generate_unique_id("DON", donors_collection)
+        payload["verified_at"] = datetime.utcnow()
         inserted = donors_collection.insert_one(payload)
     else:
         payload.update(
@@ -442,10 +343,13 @@ def register_user():
     send_email(
         email,
         "LifeLink registration submitted",
-        "Your registration is submitted and pending admin verification.",
+        "Your registration is submitted and pending admin verification."
+        if role == "hospital"
+        else f"Your donor account is ready. Login ID: {payload['login_id']}",
     )
 
-    return jsonify({"message": "Registration submitted for admin verification", "id": str(inserted.inserted_id)}), 201
+    message = "Registration submitted for admin verification" if role == "hospital" else "Donor registered successfully"
+    return jsonify({"message": message, "id": str(inserted.inserted_id), "login_id": payload.get("login_id")}), 201
 
 
 @app.route("/auth/admin/register", methods=["POST"])
@@ -487,7 +391,12 @@ def login():
     if role == "admin":
         email = (data.get("email") or "").strip().lower()
         admin = admins_collection.find_one({"email": email})
-        if not admin or not check_password_hash(admin["password"], password or ""):
+        admin_password = admin.get("password", "") if admin else ""
+        is_admin_valid = admin and (
+            check_password_hash(admin_password, password or "")
+            or admin_password == (password or "")
+        )
+        if not is_admin_valid:
             return jsonify({"error": "Invalid credentials"}), 401
         token = create_session(admin["_id"], "admin")
         return jsonify({"message": "Login successful", "token": token, "user": serialize_user(admin)}), 200
@@ -496,11 +405,13 @@ def login():
         return jsonify({"error": "Role must be donor, hospital, or admin"}), 400
 
     login_id = (data.get("login_id") or "").strip().upper()
-    if not login_id or not password:
-        return jsonify({"error": "Missing login_id or password"}), 400
+    email = (data.get("email") or "").strip().lower()
+    if not (login_id or email) or not password:
+        return jsonify({"error": "Missing login_id/email or password"}), 400
 
     collection = donors_collection if role == "donor" else hospitals_collection
-    user = collection.find_one({"login_id": login_id})
+    query = {"login_id": login_id} if login_id else {"email": email}
+    user = collection.find_one(query)
 
     if not user:
         return jsonify({"error": "Invalid credentials"}), 401
@@ -522,9 +433,8 @@ def pending_users():
     if error:
         return error
 
-    donors = [serialize_user(d) for d in donors_collection.find({"status": "pending"})]
     hospitals = [serialize_user(h) for h in hospitals_collection.find({"status": "pending"})]
-    return jsonify({"donors": donors, "hospitals": hospitals}), 200
+    return jsonify({"hospitals": hospitals}), 200
 
 
 @app.route("/admin/all-users", methods=["GET"])
@@ -560,12 +470,12 @@ def verify_user():
     action = data.get("action")  # approve/reject
     rejection_reason = (data.get("rejection_reason") or "").strip()
 
-    if user_type not in ["donor", "hospital"]:
-        return jsonify({"error": "user_type must be donor or hospital"}), 400
+    if user_type != "hospital":
+        return jsonify({"error": "Only hospital verification is supported"}), 400
     if action not in ["approve", "reject"]:
         return jsonify({"error": "action must be approve or reject"}), 400
 
-    collection = donors_collection if user_type == "donor" else hospitals_collection
+    collection = hospitals_collection
     try:
         object_id = ObjectId(user_id)
     except Exception:
@@ -576,8 +486,7 @@ def verify_user():
         return jsonify({"error": "User not found"}), 404
 
     if action == "approve":
-        login_prefix = "DON" if user_type == "donor" else "HSP"
-        login_id = generate_unique_id(login_prefix, collection)
+        login_id = generate_unique_id("HSP", collection)
         collection.update_one(
             {"_id": user["_id"]},
             {"$set": {"status": "approved", "login_id": login_id, "rejection_reason": None, "verified_at": datetime.utcnow()}},
@@ -733,19 +642,38 @@ def donor_dashboard():
         for h in hospitals_collection.find({"status": "approved"})
     ]
 
-    request_notifications = []
-    for note in notifications_collection.find({"type": {"$in": ["request", "received"]}}).sort("created_at", -1).limit(20):
-        note["_id"] = str(note["_id"])
-        request_notifications.append(note)
-
     return jsonify(
         {
             "donor": serialize_user(donor),
             "last_donation_date": donor.get("last_donation_date"),
-            "notifications": request_notifications,
             "hospital_contacts": hospital_contacts,
         }
     ), 200
+
+
+@app.route("/donor/profile", methods=["PATCH"])
+def update_donor_profile():
+    session_data, error = get_session(required_roles=["donor"])
+    if error:
+        return error
+
+    donor = donors_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+    if not donor:
+        return jsonify({"error": "Donor not found"}), 404
+
+    data = request.get_json() or {}
+    allowed_fields = ["fullname", "phone", "city", "weight", "blood_group", "last_donation_date", "available"]
+    update_payload = {field: data[field] for field in allowed_fields if field in data}
+
+    if "blood_group" in update_payload and isinstance(update_payload["blood_group"], str):
+        update_payload["blood_group"] = update_payload["blood_group"].strip().upper()
+
+    if not update_payload:
+        return jsonify({"error": "No valid fields to update"}), 400
+
+    donors_collection.update_one({"_id": donor["_id"]}, {"$set": update_payload})
+    updated = donors_collection.find_one({"_id": donor["_id"]})
+    return jsonify({"message": "Profile updated", "donor": serialize_user(updated)}), 200
 
 
 # -------------------- Public APIs --------------------

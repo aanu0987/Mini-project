@@ -186,7 +186,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="/" class="active">Home</a></li>
-            <li><a href="/blood_donors">Find Donors</a></li>
+            <li><a href="/blood_donors" id="find-donors-link">Find Donors</a></li>
             <li><a href="/dashboard" id="dashboard-link">Dashboard</a></li>
             <li><a href="#">About Us</a></li>
         </ul>
@@ -319,19 +319,55 @@
         // Check if user is logged in
         function checkAuth() {
             const token = localStorage.getItem('token');
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            
-            if (token && user.name) {
-                document.getElementById('login-btn').style.display = 'none';
-                document.getElementById('user-profile').style.display = 'flex';
-                document.getElementById('user-name').textContent = `Welcome, ${user.name}`;
+            const loginBtn = document.getElementById('login-btn');
+
+            if (!loginBtn) return;
+
+            if (token) {
+                loginBtn.textContent = 'Logout';
+                loginBtn.setAttribute('href', '#');
+                loginBtn.addEventListener('click', async (event) => {
+                    event.preventDefault();
+                    try {
+                        await fetch('/auth/logout', {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${token}` },
+                        });
+                    } catch (_) {}
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('role');
+                    localStorage.removeItem('user');
+                    window.location.href = '/login';
+                });
+            } else {
+                loginBtn.textContent = 'Login';
+                loginBtn.setAttribute('href', '/login');
             }
+        }
+
+        function protectLinks() {
+            const token = localStorage.getItem('token');
+            const protectedLinks = [
+                document.getElementById('find-donors-link'),
+                document.getElementById('dashboard-link'),
+            ];
+
+            protectedLinks.forEach((link) => {
+                if (!link) return;
+                link.addEventListener('click', (event) => {
+                    if (token) return;
+                    event.preventDefault();
+                    alert('Please login to access Find Donors and Dashboard.');
+                    window.location.href = '/login';
+                });
+            });
         }
         
         // Update stats on page load
         document.addEventListener('DOMContentLoaded', () => {
             updateStats();
             checkAuth();
+            protectLinks();
         });
         
         // Refresh stats every 30 seconds

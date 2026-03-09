@@ -408,7 +408,8 @@
             const role = localStorage.getItem('role');
             
             if (!userStr) {
-                window.location.href = 'login.html';
+                alert('Please login to access Find Donors and Dashboard.');
+                window.location.href = '/login';
                 return;
             }
             

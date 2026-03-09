@@ -1,4 +1,5 @@
 const API_BASE = window.location.origin;
+const AUTH_REQUIRED_MESSAGE = 'Please login to access Find Donors and Dashboard.';
 
 function getToken() {
   return localStorage.getItem('token');
@@ -9,6 +10,64 @@ function authHeaders() {
   return token
     ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     : { 'Content-Type': 'application/json' };
+}
+
+
+function isLoggedIn() {
+  return Boolean(getToken());
+}
+
+function updateAuthButtonState() {
+  const loginBtn = document.getElementById('login-btn');
+  if (!loginBtn) return;
+
+  if (isLoggedIn()) {
+    loginBtn.textContent = 'Logout';
+    loginBtn.setAttribute('href', '#');
+    loginBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      logout();
+    });
+  } else {
+    loginBtn.textContent = 'Login / Register';
+  }
+}
+
+function guardProtectedPage() {
+  const path = window.location.pathname.toLowerCase();
+  const isProtected =
+    path.endsWith('/dashboard') ||
+    path.endsWith('/dashboard.html') ||
+    path.endsWith('/blood_donors') ||
+    path.endsWith('/blood_donors.html');
+
+  if (isProtected && !isLoggedIn()) {
+    alert(AUTH_REQUIRED_MESSAGE);
+    window.location.href = '/login';
+    return true;
+  }
+
+  return false;
+}
+
+function guardProtectedNavLinks() {
+  const protectedSelectors = [
+    'a[href="/dashboard"]',
+    'a[href="dashboard.html"]',
+    'a[href="/blood_donors"]',
+    'a[href="blood_donors.html"]',
+  ];
+
+  protectedSelectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((link) => {
+      link.addEventListener('click', (event) => {
+        if (isLoggedIn()) return;
+        event.preventDefault();
+        alert(AUTH_REQUIRED_MESSAGE);
+        window.location.href = '/login';
+      });
+    });
+  });
 }
 
 async function logout() {
@@ -29,6 +88,10 @@ async function logout() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('logout-btn')?.addEventListener('click', logout);
+
+  if (guardProtectedPage()) return;
+  guardProtectedNavLinks();
+  updateAuthButtonState();
 
   initRegister();
   initLogin();
@@ -165,7 +228,12 @@ function initLogin() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) return alert(data.error || 'Login failed');
+    if (!res.ok) {
+      if (data.error && data.error.toLowerCase().includes('register')) {
+        return alert('Register as donor or hospital');
+      }
+      return alert(data.error || 'Login failed');
+    }
 
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', role);

@@ -961,16 +961,19 @@ def health():
 
 
 if __name__ == '__main__':
-    print("Starting Python Flask Server on port 5000...")
+    port = int(os.getenv("PORT", "5000"))
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+
+    print(f"Starting Python Flask Server on port {port}...")
     print("Creating indexes...")
-    
+
     # Create indexes for better performance
     donors_collection.create_index("email", unique=True)
     donors_collection.create_index("phone", unique=True)
     donors_collection.create_index("aadhar", unique=True)
     hospital_collection.create_index("email", unique=True)
     hospital_collection.create_index("hospital_id", unique=True)
-    
+
     print("Server ready!")
-    print("Access the application at: http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print(f"Access the application at: http://localhost:{port}")
+    app.run(host="0.0.0.0", debug=debug_mode, port=port)

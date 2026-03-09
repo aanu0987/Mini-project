@@ -367,13 +367,25 @@ function initAdminRegister() {
 }
 
 async function initAdminDashboard() {
-  const container = document.getElementById('pending-users');
-  if (!container) return;
+  const pendingContainer = document.getElementById('pending-users');
+  if (!pendingContainer) return;
+  const allUsersContainer = document.getElementById('all-users');
+  const notificationsContainer = document.getElementById('admin-notifications');
 
-  const res = await fetch(`${API_BASE}/admin/pending-users`, { headers: authHeaders() });
-  const data = await res.json();
-  if (!res.ok) {
-    container.innerHTML = `<p>${data.error || 'Unauthorized'}</p>`;
+  const [pendingRes, allUsersRes, notesRes] = await Promise.all([
+    fetch(`${API_BASE}/admin/pending-users`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/admin/all-users`, { headers: authHeaders() }),
+    fetch(`${API_BASE}/admin/notifications`, { headers: authHeaders() }),
+  ]);
+
+  const pendingData = await pendingRes.json();
+  const allUsersData = await allUsersRes.json();
+  const notesData = await notesRes.json();
+
+  if (!pendingRes.ok) {
+    pendingContainer.innerHTML = `<p>${pendingData.error || 'Unauthorized'}</p>`;
+    if (allUsersContainer) allUsersContainer.innerHTML = '<p>Unable to load users.</p>';
+    if (notificationsContainer) notificationsContainer.innerHTML = '<p>Unable to load notifications.</p>';
     return;
   }
 
@@ -388,7 +400,34 @@ async function initAdminDashboard() {
     </div>
   `).join('');
 
-  container.innerHTML = `<h3>Donors</h3>${drawCards(data.donors, 'donor') || '<p>No pending donors.</p>'}<h3>Hospitals</h3>${drawCards(data.hospitals, 'hospital') || '<p>No pending hospitals.</p>'}`;
+  pendingContainer.innerHTML = `<h3>Donors</h3>${drawCards(pendingData.donors, 'donor') || '<p>No pending donors.</p>'}<h3>Hospitals</h3>${drawCards(pendingData.hospitals, 'hospital') || '<p>No pending hospitals.</p>'}`;
+
+  if (allUsersContainer) {
+    if (!allUsersRes.ok) {
+      allUsersContainer.innerHTML = `<p>${allUsersData.error || 'Unable to load users.'}</p>`;
+    } else {
+      const drawUserLine = (u) => `${u.fullname} (${u.email}) - ${u.status || 'N/A'} ${u.login_id ? `| ID: ${u.login_id}` : ''}`;
+      allUsersContainer.innerHTML = `
+        <h3>Donors (${(allUsersData.donors || []).length})</h3>
+        ${(allUsersData.donors || []).map(u => `<div style="margin:6px 0;">${drawUserLine(u)}</div>`).join('') || '<p>No donor records.</p>'}
+        <h3 style="margin-top:16px;">Hospitals (${(allUsersData.hospitals || []).length})</h3>
+        ${(allUsersData.hospitals || []).map(u => `<div style="margin:6px 0;">${drawUserLine(u)}</div>`).join('') || '<p>No hospital records.</p>'}
+      `;
+    }
+  }
+
+  if (notificationsContainer) {
+    if (!notesRes.ok) {
+      notificationsContainer.innerHTML = `<p>${notesData.error || 'Unable to load notifications.'}</p>`;
+    } else {
+      notificationsContainer.innerHTML = (notesData.notifications || []).map(n => `
+        <div class="glass-panel" style="padding:12px; margin:8px 0;">
+          <b>${n.type || 'notification'}</b> - ${n.message}<br>
+          <small>${n.created_at || ''}</small>
+        </div>
+      `).join('') || '<p>No notifications yet.</p>';
+    }
+  }
 }
 
 window.rejectPrompt = function (type, userId) {
@@ -429,12 +468,13 @@ async function initHospitalDashboard() {
 
   document.getElementById('hospital-notifications').innerHTML = `<h3>Recent Notifications</h3>${(data.notifications || []).map(n => `<div class="glass-panel" style="padding:12px; margin:8px 0;">${n.message}</div>`).join('') || '<p>No notifications yet.</p>'}`;
 
-  document.getElementById('send-request-btn').addEventListener('click', () => sendHospitalEvent('request'));
+  document.getElementById('organ-request-btn').addEventListener('click', () => sendHospitalEvent('request', 'organ'));
+  document.getElementById('blood-request-btn').addEventListener('click', () => sendHospitalEvent('request', 'blood'));
   document.getElementById('send-received-btn').addEventListener('click', () => sendHospitalEvent('received'));
 }
 
-async function sendHospitalEvent(kind) {
-  const request_type = document.getElementById('request-type').value;
+async function sendHospitalEvent(kind, fixedType = '') {
+  const request_type = fixedType || document.getElementById('request-type').value;
   const details = document.getElementById('request-details').value;
   const endpoint = kind === 'request' ? '/hospital/request' : '/hospital/received';
   const payload = kind === 'request' ? { request_type, details } : { request_type };

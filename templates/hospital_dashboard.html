@@ -4,10 +4,13 @@
   <h1>Hospital Dashboard</h1>
   <div id="hospital-details" class="glass-panel" style="padding:20px; margin:20px 0;"></div>
   <div class="glass-panel" style="padding:20px; margin:20px 0;">
-    <h3>Send Request Notification</h3>
-    <div class="form-group"><label>Type</label><select id="request-type"><option value="organ">Organ</option><option value="blood">Blood</option></select></div>
+    <h3>Request Management</h3>
     <div class="form-group"><label>Details</label><input type="text" id="request-details" placeholder="Required blood group / organ details"></div>
-    <button class="btn" id="send-request-btn">Request</button>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn" id="organ-request-btn">Organ Request</button>
+      <button class="btn" id="blood-request-btn">Blood Request</button>
+    </div>
+    <div class="form-group" style="margin-top:14px;"><label>Received Type</label><select id="request-type"><option value="organ">Organ</option><option value="blood">Blood</option></select></div>
     <button class="btn btn-secondary" id="send-received-btn">Received</button>
   </div>
   <div id="hospital-notifications"></div>

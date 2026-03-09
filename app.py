@@ -11,6 +11,17 @@ from datetime import datetime, timedelta
 import os
 import smtplib
 
+
+TAMILNADU_DISTRICTS = [
+    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri",
+    "Dindigul", "Erode", "Kallakurichi", "Kancheepuram", "Kanyakumari", "Karur",
+    "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris",
+    "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga",
+    "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli",
+    "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore",
+    "Viluppuram", "Virudhunagar"
+]
+
 app = Flask(__name__, 
             template_folder='templates',  # HTML files go here
             static_folder='static')        # CSS, JS files go here
@@ -277,7 +288,7 @@ def create_notification(event_type, message, **extra):
 # -------------------- Auth & Registration --------------------
 @app.route("/auth/register", methods=["POST"])
 def register_user():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
     role = data.get("role")
     fullname = (data.get("fullname") or "").strip()
     phone = (data.get("phone") or "").strip()
@@ -324,6 +335,13 @@ def register_user():
         )
         if not all([payload["aadhar"], payload["weight"], payload["dob"], payload["blood_group"]]):
             return jsonify({"error": "Missing donor fields"}), 400
+        try:
+            donor_weight = float(payload["weight"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Weight must be a valid number"}), 400
+        if donor_weight < 45:
+            return jsonify({"error": "Donor weight must be at least 45 kg"}), 400
+        payload["weight"] = donor_weight
         if donors_collection.find_one({"aadhar": payload["aadhar"]}):
             return jsonify({"error": "Aadhar already exists"}), 400
         payload["status"] = "approved"
@@ -331,13 +349,36 @@ def register_user():
         payload["verified_at"] = datetime.utcnow()
         inserted = donors_collection.insert_one(payload)
     else:
+        city = (data.get("city") or "").strip()
+        if city not in TAMILNADU_DISTRICTS:
+            return jsonify({"error": "Please select a valid Tamil Nadu district"}), 400
+
+        cert_file = request.files.get("certificate_pdf")
+        certificate_path = None
+        if cert_file:
+            filename = (cert_file.filename or "").strip()
+            if not filename.lower().endswith(".pdf"):
+                return jsonify({"error": "Certificate must be a PDF file"}), 400
+
+            upload_dir = os.path.join(app.static_folder, "uploads", "certificates")
+            os.makedirs(upload_dir, exist_ok=True)
+            safe_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{filename.replace(' ', '_')}"
+            cert_file.save(os.path.join(upload_dir, safe_name))
+            certificate_path = f"/static/uploads/certificates/{safe_name}"
+
         payload.update(
             {
                 "hospital_name": fullname,
                 "address": (data.get("address") or "").strip(),
-                "contact_person": (data.get("contact_person") or "").strip(),
+                "city": city,
+                "certificate_pdf": certificate_path,
+                "license_number": (data.get("license_number") or "").strip(),
             }
         )
+        if not payload["hospital_name"]:
+            return jsonify({"error": "Hospital name is required"}), 400
+        if not payload["certificate_pdf"]:
+            return jsonify({"error": "NBAH/JCI certificate PDF is required"}), 400
         inserted = hospitals_collection.insert_one(payload)
 
     send_email(
@@ -642,10 +683,21 @@ def donor_dashboard():
         for h in hospitals_collection.find({"status": "approved"})
     ]
 
+    age = None
+    dob_raw = donor.get("dob")
+    if dob_raw:
+        try:
+            dob_date = datetime.strptime(dob_raw, "%Y-%m-%d").date()
+            today = datetime.utcnow().date()
+            age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+        except ValueError:
+            age = None
+
     return jsonify(
         {
             "donor": serialize_user(donor),
             "last_donation_date": donor.get("last_donation_date"),
+            "age": age,
             "hospital_contacts": hospital_contacts,
         }
     ), 200
@@ -662,7 +714,7 @@ def update_donor_profile():
         return jsonify({"error": "Donor not found"}), 404
 
     data = request.get_json() or {}
-    allowed_fields = ["fullname", "phone", "city", "weight", "blood_group", "last_donation_date", "available"]
+    allowed_fields = ["weight", "last_donation_date", "dob"]
     update_payload = {field: data[field] for field in allowed_fields if field in data}
 
     if "blood_group" in update_payload and isinstance(update_payload["blood_group"], str):
@@ -670,6 +722,15 @@ def update_donor_profile():
 
     if not update_payload:
         return jsonify({"error": "No valid fields to update"}), 400
+
+    if "weight" in update_payload:
+        try:
+            new_weight = float(update_payload["weight"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "Weight must be a valid number"}), 400
+        if new_weight < 45:
+            return jsonify({"error": "Weight must be at least 45 kg"}), 400
+        update_payload["weight"] = new_weight
 
     donors_collection.update_one({"_id": donor["_id"]}, {"$set": update_payload})
     updated = donors_collection.find_one({"_id": donor["_id"]})

@@ -38,6 +38,7 @@ function initRegister() {
   const roleInput = document.getElementById('user-role');
   const donorFields = document.getElementById('donor-fields');
   const hospitalFields = document.getElementById('hospital-fields');
+  const donorNameGroup = document.getElementById('donor-name-group');
 
   tabBtns.forEach((btn) =>
     btn.addEventListener('click', () => {
@@ -47,46 +48,67 @@ function initRegister() {
       roleInput.value = role;
       if (donorFields) donorFields.style.display = role === 'donor' ? 'block' : 'none';
       if (hospitalFields) hospitalFields.style.display = role === 'hospital' ? 'block' : 'none';
+      if (donorNameGroup) donorNameGroup.style.display = role === 'donor' ? 'block' : 'none';
+      const fullnameInput = document.getElementById('fullname');
+      const hospitalNameInput = document.getElementById('hospital-name');
+      if (fullnameInput) fullnameInput.required = role === 'donor';
+      if (hospitalNameInput) hospitalNameInput.required = role === 'hospital';
     })
   );
+
+  document.getElementById('fullname')?.setAttribute('required', 'required');
+  document.getElementById('hospital-name')?.removeAttribute('required');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const role = roleInput.value;
-    const payload = {
-      role,
-      fullname:
-        role === 'hospital'
-          ? (document.getElementById('hospital-name')?.value || '')
-          : (document.getElementById('fullname')?.value || ''),
-      phone: document.getElementById('phone')?.value,
-      email: document.getElementById('email')?.value,
-      password: document.getElementById('password')?.value,
-      city: document.getElementById('city')?.value,
-    };
 
+    let res;
     if (role === 'donor') {
-      Object.assign(payload, {
+      const payload = {
+        role,
+        fullname: document.getElementById('fullname')?.value || '',
+        phone: document.getElementById('phone')?.value,
+        email: document.getElementById('email')?.value,
+        password: document.getElementById('password')?.value,
+        city: document.getElementById('city')?.value,
         donor_type: 'blood',
         aadhar: document.getElementById('aadhar')?.value,
         weight: document.getElementById('weight')?.value,
         dob: document.getElementById('dob')?.value,
         blood_group: document.getElementById('blood_group')?.value,
         last_donation_date: document.getElementById('last_donation_date')?.value,
+      };
+
+      res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(payload),
       });
     } else {
-      Object.assign(payload, {
-        license_number: document.getElementById('license_number')?.value,
-        address: document.getElementById('address')?.value,
-        contact_person: document.getElementById('contact_person')?.value,
+      const formData = new FormData();
+      formData.append('role', role);
+      formData.append('fullname', document.getElementById('hospital-name')?.value || '');
+      formData.append('phone', document.getElementById('phone')?.value || '');
+      formData.append('email', document.getElementById('email')?.value || '');
+      formData.append('password', document.getElementById('password')?.value || '');
+      formData.append('city', document.getElementById('city')?.value || '');
+      formData.append('license_number', document.getElementById('license_number')?.value || '');
+      formData.append('address', document.getElementById('address')?.value || '');
+
+      const fileInput = document.getElementById('certificate_pdf');
+      if (fileInput?.files?.[0]) {
+        formData.append('certificate_pdf', fileInput.files[0]);
+      }
+
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers,
+        body: formData,
       });
     }
-
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(payload),
-    });
     const data = await res.json();
     if (res.ok) {
       alert(data.message || 'Registration successful');
@@ -308,6 +330,16 @@ async function initDonorDashboard() {
   }
 
   donation.innerHTML = `<h3>Last Donation Date</h3><p>${data.last_donation_date || 'No record available'}</p>`;
+  const ageCard = document.getElementById('donor-age');
+  if (ageCard) ageCard.innerHTML = `<h3>Age</h3><p>${data.age ?? 'Not available'}</p>`;
+  const donor = data.donor || {};
+  const weightInput = document.getElementById('edit-weight');
+  const dobInput = document.getElementById('edit-dob');
+  const lastDonationInput = document.getElementById('edit-last-donation');
+  if (weightInput) weightInput.value = donor.weight || '';
+  if (dobInput) dobInput.value = donor.dob || '';
+  if (lastDonationInput) lastDonationInput.value = donor.last_donation_date || '';
+
   document.getElementById('hospital-contacts').innerHTML = (data.hospital_contacts || [])
     .map(
       (h) => `<div class="glass-panel" style="padding:12px; margin:8px 0;">${h.hospital_name}<br>${h.phone || ''}<br>${h.email || ''}</div>`
@@ -319,11 +351,8 @@ async function initDonorDashboard() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const payload = {
-        fullname: document.getElementById('edit-fullname')?.value,
-        phone: document.getElementById('edit-phone')?.value,
-        city: document.getElementById('edit-city')?.value,
         weight: document.getElementById('edit-weight')?.value,
-        blood_group: document.getElementById('edit-blood-group')?.value,
+        dob: document.getElementById('edit-dob')?.value,
         last_donation_date: document.getElementById('edit-last-donation')?.value,
       };
       const updateRes = await fetch(`${API_BASE}/donor/profile`, {

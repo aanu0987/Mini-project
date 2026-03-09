@@ -467,6 +467,14 @@ def login():
     return jsonify({"message": "Login successful", "token": token, "user": serialize_user(user)}), 200
 
 
+@app.route("/auth/logout", methods=["POST"])
+def logout():
+    token = parse_bearer_token(request.headers.get("Authorization"))
+    if token:
+        sessions_collection.delete_one({"token": token})
+    return jsonify({"message": "Logout successful"}), 200
+
+
 # -------------------- Admin --------------------
 @app.route("/admin/pending-users", methods=["GET"])
 def pending_users():

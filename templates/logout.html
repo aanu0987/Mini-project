@@ -138,11 +138,13 @@
             // Clear session on logout
             localStorage.removeItem('user');
             localStorage.removeItem('role');
+            const token = localStorage.getItem('token');
+            localStorage.removeItem('token');
             
             // Call logout API
-            fetch('http://localhost:5000/logout', {
+            fetch('/auth/logout', {
                 method: 'POST',
-                credentials: 'include'
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
             })
             .then(response => response.json())
             .then(data => {

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us | LifeLink</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #e74c3c;
+            --dark-bg: #0a0c0f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0c0f 0%, #1a1e24 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background: rgba(10, 12, 15, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--primary-color);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: #8b949e;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--primary-color);
+        }
+
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 5%;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            color: #8b949e;
+            font-size: 1.1rem;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .panel h2 {
+            margin-bottom: 0.75rem;
+            color: var(--primary-color);
+        }
+
+        .panel p {
+            color: #c9d1d9;
+            line-height: 1.7;
+        }
+
+        .cta {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #8b949e;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">Life<span>Link</span></a>
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/blood_donors">Find Donors</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/about_us" class="active">About Us</a></li>
+        </ul>
+        <a href="/login" class="btn">Login</a>
+    </nav>
+
+    <main class="container">
+        <section class="hero">
+            <h1>About LifeLink</h1>
+            <p>We connect donors, hospitals, and communities to make life-saving donations faster and easier.</p>
+        </section>
+
+        <section class="panel">
+            <h2>Our Mission</h2>
+            <p>LifeLink is focused on reducing delays in blood and organ donation coordination. We provide a simple and reliable platform where hospitals can raise urgent requests and donors can respond at the right time.</p>
+        </section>
+
+        <section class="panel">
+            <h2>What We Do</h2>
+            <p>From donor registration and request matching to campaign visibility, LifeLink helps every stakeholder stay connected and informed. Our goal is to improve response time and increase successful donations across Tamil Nadu and beyond.</p>
+        </section>
+
+        <section class="panel">
+            <h2>Why It Matters</h2>
+            <p>Every minute can matter in a medical emergency. By streamlining communication between hospitals and donors, we help teams act quickly and save more lives.</p>
+        </section>
+
+        <div class="cta">
+            <a href="/register" class="btn">Join LifeLink</a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

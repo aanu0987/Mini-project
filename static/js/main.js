@@ -148,8 +148,8 @@ function initRegister() {
         aadhar: document.getElementById('aadhar')?.value,
         weight: document.getElementById('weight')?.value,
         dob: document.getElementById('dob')?.value,
-        blood_group: document.getElementById('blood_group')?.value,
-        last_donation_date: document.getElementById('last_donation_date')?.value,
+        blood_group: document.getElementById('bloodGroup')?.value,
+        last_donation_date: document.getElementById('last-donation-date')?.value,
       };
 
       res = await fetch(`${API_BASE}/auth/register`, {

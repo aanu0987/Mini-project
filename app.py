@@ -32,7 +32,7 @@ CORS(app, supports_credentials=True)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("MONGO_DB", "lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifecompanion.donors@gmail.com")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+APP_PASSWORD = os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")
 
 # MongoDB Connection
 client = MongoClient(MONGO_URI)

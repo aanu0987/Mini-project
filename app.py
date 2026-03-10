@@ -32,7 +32,11 @@ CORS(app, supports_credentials=True)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("MONGO_DB", "lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifecompanion.donors@gmail.com")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", SENDER_EMAIL)
+APP_PASSWORD = os.getenv("APP_PASSWORD") or os.getenv("SMTP_PASSWORD") or os.getenv("EMAIL_PASSWORD") or ""
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "true").strip().lower() in {"1", "true", "yes", "on"}
 
 # MongoDB Connection
 client = MongoClient(MONGO_URI)
@@ -98,7 +102,10 @@ app.json_encoder = JSONEncoder
 # -------------------- Utility Functions --------------------
 def send_email(recipient, subject, content):
     if not APP_PASSWORD:
-        print(f"⚠️ Email disabled (APP_PASSWORD missing). Intended email to {recipient}: {subject}")
+        print(
+            f"⚠️ Email disabled (missing APP_PASSWORD/SMTP_PASSWORD/EMAIL_PASSWORD). "
+            f"Intended email to {recipient}: {subject}"
+        )
         return False
 
     msg = EmailMessage()
@@ -108,8 +115,15 @@ def send_email(recipient, subject, content):
     msg.set_content(content)
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(SENDER_EMAIL, APP_PASSWORD)
+        if SMTP_USE_SSL:
+            smtp_client = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
+        else:
+            smtp_client = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+
+        with smtp_client as smtp:
+            if not SMTP_USE_SSL:
+                smtp.starttls()
+            smtp.login(SMTP_USERNAME, APP_PASSWORD)
             smtp.send_message(msg)
             log_action('email', f'Email sent to {recipient}')
             return True
@@ -447,12 +461,18 @@ def login():
 
     login_id = (data.get("login_id") or "").strip().upper()
     email = (data.get("email") or "").strip().lower()
+    if login_id and "@" in login_id:
+        email = login_id.lower()
+        login_id = ""
     if not (login_id or email) or not password:
         return jsonify({"error": "Missing login_id/email or password"}), 400
 
     collection = donors_collection if role == "donor" else hospitals_collection
-    query = {"login_id": login_id} if login_id else {"email": email}
-    user = collection.find_one(query)
+    user = None
+    if login_id:
+        user = collection.find_one({"login_id": login_id})
+    if not user and email:
+        user = collection.find_one({"email": email})
 
     if not user:
         return jsonify({"error": "Register as donor or hospital"}), 401

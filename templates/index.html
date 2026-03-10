@@ -273,48 +273,119 @@
 
     <script>
         // Fetch and update stats dynamically
-        async function updateStats() {
+      // Store current counts
+        let currentStats = {
+            donors: 0,
+            hospitals: 0,
+            saved: 0
+        };
+
+        // Initialize the stats
+        async function initStats() {
             try {
                 const response = await fetch('http://localhost:5000/api/stats');
                 const stats = await response.json();
                 
-                document.getElementById('donors-count').textContent = stats.donors || 0;
-                document.getElementById('hospitals-count').textContent = stats.hospitals || 0;
-                document.getElementById('saved-count').textContent = stats.saved || 0;
+                currentStats = {
+                    donors: stats.donors || 0,
+                    hospitals: stats.hospitals || 0,
+                    saved: stats.saved || 0
+                };
                 
-                // Animate numbers
-                animateNumbers();
+                // Animate from 0 to current values
+                animateValue('donors-count', 0, currentStats.donors, 2000);
+                animateValue('hospitals-count', 0, currentStats.hospitals, 2000);
+                animateValue('saved-count', 0, currentStats.saved, 2000);
+                
             } catch (error) {
                 console.error('Error fetching stats:', error);
-                // Set fallback values
-                document.getElementById('donors-count').textContent = '1,234';
-                document.getElementById('hospitals-count').textContent = '56';
-                document.getElementById('saved-count').textContent = '892';
+                // Fallback values
+                animateValue('donors-count', 0, 1234, 2000);
+                animateValue('hospitals-count', 0, 56, 2000);
+                animateValue('saved-count', 0, 892, 2000);
+                
+                currentStats = {
+                    donors: 1234,
+                    hospitals: 56,
+                    saved: 892
+                };
             }
         }
-        
-        function animateNumbers() {
-            const donors = document.getElementById('donors-count');
-            const hospitals = document.getElementById('hospitals-count');
-            const saved = document.getElementById('saved-count');
+
+        // Animate function
+        function animateValue(elementId, start, end, duration) {
+            const element = document.getElementById(elementId);
+            let startTimestamp = null;
             
-            const animateValue = (element, start, end, duration) => {
-                let startTimestamp = null;
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                    element.innerHTML = Math.floor(progress * (end - start) + start);
-                    if (progress < 1) {
-                        window.requestAnimationFrame(step);
-                    }
-                };
-                window.requestAnimationFrame(step);
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                
+                const currentValue = Math.floor(progress * (end - start) + start);
+                element.textContent = currentValue.toLocaleString();
+                
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    element.textContent = end.toLocaleString();
+                }
             };
             
-            animateValue(donors, 0, parseInt(donors.textContent) || 1234, 2000);
-            animateValue(hospitals, 0, parseInt(hospitals.textContent) || 56, 2000);
-            animateValue(saved, 0, parseInt(saved.textContent) || 892, 2000);
+            window.requestAnimationFrame(step);
         }
+
+        // Start polling for updates
+        function startPolling(interval = 10000) {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('http://localhost:5000/api/stats');
+                    const newStats = await response.json();
+                    
+                    if (newStats.donors > currentStats.donors) {
+                        animateValue('donors-count', currentStats.donors, newStats.donors, 1000);
+                        currentStats.donors = newStats.donors;
+                    }
+                    
+                    if (newStats.hospitals > currentStats.hospitals) {
+                        animateValue('hospitals-count', currentStats.hospitals, newStats.hospitals, 1000);
+                        currentStats.hospitals = newStats.hospitals;
+                    }
+                    
+                    if (newStats.saved > currentStats.saved) {
+                        animateValue('saved-count', currentStats.saved, newStats.saved, 1000);
+                        currentStats.saved = newStats.saved;
+                    }
+                    
+                } catch (error) {
+                    console.error('Error polling stats:', error);
+                }
+            }, interval);
+        }
+
+        // Start everything when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initStats();
+            startPolling(10000); // Check for updates every 10 seconds
+        });
+
+        // Optional: Manual update functions you can call from anywhere
+        window.incrementDonors = function(amount = 1) {
+            const oldValue = currentStats.donors;
+            currentStats.donors += amount;
+            animateValue('donors-count', oldValue, currentStats.donors, 1000);
+        };
+
+        window.incrementHospitals = function(amount = 1) {
+            const oldValue = currentStats.hospitals;
+            currentStats.hospitals += amount;
+            animateValue('hospitals-count', oldValue, currentStats.hospitals, 1000);
+        };
+
+        window.incrementSaved = function(amount = 1) {
+            const oldValue = currentStats.saved;
+            currentStats.saved += amount;
+            animateValue('saved-count', oldValue, currentStats.saved, 1000);
+        };
         
         // Check if user is logged in
         function checkAuth() {

@@ -60,7 +60,7 @@ def index():
 def serve_page(page):
     """Serve individual HTML pages"""
     # List of valid pages
-    valid_pages = ['blood_donors', 'dashboard', 'login', 'register', 'logout']
+    valid_pages = ['blood_donors', 'dashboard', 'login', 'register', 'logout', 'aboutus']
     
     if page in valid_pages:
         return render_template(f'{page}.html')

@@ -432,18 +432,16 @@
             
             try {
                 // Fetch real data from API
-                const [statsRes, usersRes, pendingRes, logsRes, donationsRes] = await Promise.all([
+                const [statsRes, usersRes, pendingRes, donationsRes] = await Promise.all([
                     fetch('http://localhost:5000/api/stats'),
                     fetch('http://localhost:5000/api/users'),
                     fetch('http://localhost:5000/api/pending-hospitals'),
-                    fetch('http://localhost:5000/api/system-logs'),
                     fetch('http://localhost:5000/api/recent-donations')
                 ]);
                 
                 const stats = await statsRes.json();
                 const users = await usersRes.json();
                 const pendingHospitals = await pendingRes.json();
-                const logs = await logsRes.json();
                 const donations = await donationsRes.json();
                 
                 container.innerHTML = `
@@ -473,27 +471,7 @@
                         </div>
                     </div>
                     
-                    <!-- Quick Actions -->
                     <div class="row">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Quick Actions</h3>
-                            </div>
-                            <div class="card-body">
-                                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                    <button class="btn btn-primary" onclick="showAddUserModal()">
-                                        <i class="fas fa-user-plus"></i> Add New User
-                                    </button>
-                                    <button class="btn btn-success" onclick="generateReport()">
-                                        <i class="fas fa-file-alt"></i> Generate Report
-                                    </button>
-                                    <button class="btn btn-info" onclick="window.location.href='blood_donors.html'">
-                                        <i class="fas fa-search"></i> View All Donors
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
                         <!-- System Health -->
                         <div class="card">
                             <div class="card-header">
@@ -654,25 +632,6 @@
                             </div>
                         </div>
                         
-                        <!-- System Logs -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">System Logs</h3>
-                            </div>
-                            <div class="card-body">
-                                <div style="max-height: 300px; overflow-y: auto;">
-                                    ${logs.map(log => `
-                                        <div class="log-entry">
-                                            <small class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</small>
-                                            <p style="margin: 0.25rem 0 0;">${log.description}</p>
-                                        </div>
-                                    `).join('')}
-                                    ${logs.length === 0 ? `
-                                        <p style="text-align: center;">No logs available</p>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 `;
                 

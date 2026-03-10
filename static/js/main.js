@@ -184,7 +184,7 @@ function initRegister() {
     const data = await res.json();
     if (res.ok) {
       alert(data.message || 'Registration successful');
-      window.location.href = 'login.html';
+      window.location.href = '/login';
     } else {
       alert(data.error || 'Registration failed');
     }
@@ -239,9 +239,9 @@ function initLogin() {
     localStorage.setItem('role', role);
     localStorage.setItem('user', JSON.stringify(data.user));
 
-    if (role === 'admin') window.location.href = 'admin.html';
-    if (role === 'hospital') window.location.href = 'hospital_dashboard.html';
-    if (role === 'donor') window.location.href = 'donor_dashboard.html';
+    if (role === 'admin') window.location.href = '/admin';
+    if (role === 'hospital') window.location.href = '/hospital_dashboard';
+    if (role === 'donor') window.location.href = '/donor_dashboard';
   });
 }
 
@@ -422,6 +422,21 @@ async function initDonorDashboard() {
       (h) => `<div class="glass-panel" style="padding:12px; margin:8px 0;">${h.hospital_name}<br>${h.phone || ''}<br>${h.email || ''}</div>`
     )
     .join('') || '<p>No hospitals available.</p>';
+
+  const notificationsEl = document.getElementById('hospital-notifications');
+  if (notificationsEl) {
+    notificationsEl.innerHTML = (data.hospital_notifications || [])
+      .map(
+        (n) => `
+          <div class="glass-panel" style="padding:12px; margin:8px 0;">
+            <b>${(n.type || 'notification').toUpperCase()}</b><br>
+            ${n.message || ''}<br>
+            <small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
+          </div>
+        `
+      )
+      .join('') || '<p>No hospital notifications yet.</p>';
+  }
 
   const form = document.getElementById('donor-edit-form');
   if (form) {

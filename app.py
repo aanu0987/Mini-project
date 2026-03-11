@@ -457,8 +457,15 @@ def login():
     if role not in ["donor", "hospital"]:
         return jsonify({"error": "Role must be donor, hospital, or admin"}), 400
 
-    login_id = (data.get("login_id") or "").strip().upper()
+    raw_login = (data.get("login_id") or "").strip()
+    login_id = raw_login.upper()
     email = (data.get("email") or "").strip().lower()
+
+    # Support "Login ID or Email" in a single field from the UI.
+    if raw_login and "@" in raw_login:
+        email = raw_login.lower()
+        login_id = ""
+
     if not (login_id or email) or not password:
         return jsonify({"error": "Missing login_id/email or password"}), 400
 

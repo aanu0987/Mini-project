@@ -751,7 +751,7 @@ def update_donor_profile():
         return jsonify({"error": "Donor not found"}), 404
 
     data = request.get_json() or {}
-    allowed_fields = ["weight", "last_donation_date", "dob"]
+    allowed_fields = ["fullname", "phone", "weight", "last_donation_date", "dob", "blood_group"]
     update_payload = {field: data[field] for field in allowed_fields if field in data}
 
     if "blood_group" in update_payload and isinstance(update_payload["blood_group"], str):
@@ -772,6 +772,34 @@ def update_donor_profile():
     donors_collection.update_one({"_id": donor["_id"]}, {"$set": update_payload})
     updated = donors_collection.find_one({"_id": donor["_id"]})
     return jsonify({"message": "Profile updated", "donor": serialize_user(updated)}), 200
+
+
+@app.route("/hospital/profile", methods=["PATCH"])
+def update_hospital_profile():
+    session_data, error = get_session(required_roles=["hospital"])
+    if error:
+        return error
+
+    hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+    if not hospital:
+        return jsonify({"error": "Hospital not found"}), 404
+
+    data = request.get_json() or {}
+    allowed_fields = ["hospital_name", "phone", "address", "city", "license_number"]
+    update_payload = {field: data[field] for field in allowed_fields if field in data}
+
+    if "city" in update_payload and update_payload["city"] not in TAMILNADU_DISTRICTS:
+        return jsonify({"error": "Please select a valid Tamil Nadu district"}), 400
+
+    if "hospital_name" in update_payload:
+        update_payload["fullname"] = update_payload["hospital_name"]
+
+    if not update_payload:
+        return jsonify({"error": "No valid fields to update"}), 400
+
+    hospitals_collection.update_one({"_id": hospital["_id"]}, {"$set": update_payload})
+    updated = hospitals_collection.find_one({"_id": hospital["_id"]})
+    return jsonify({"message": "Hospital profile updated", "hospital": serialize_user(updated)}), 200
 
 
 # -------------------- Public APIs --------------------

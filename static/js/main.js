@@ -367,8 +367,21 @@ async function initHospitalDashboard() {
     <h3>${hospital.hospital_name || hospital.fullname}</h3>
     <p>Email: ${hospital.email}</p>
     <p>Phone: ${hospital.phone}</p>
+    <p>Address: ${hospital.address || 'Not provided'}</p>
+    <p>City: ${hospital.city || 'Not provided'}</p>
     <p>Login ID: ${hospital.login_id}</p>
   `;
+
+  const nameInput = document.getElementById('edit-hospital-name');
+  const phoneInput = document.getElementById('edit-hospital-phone');
+  const addressInput = document.getElementById('edit-hospital-address');
+  const cityInput = document.getElementById('edit-hospital-city');
+  const licenseInput = document.getElementById('edit-hospital-license');
+  if (nameInput) nameInput.value = hospital.hospital_name || hospital.fullname || '';
+  if (phoneInput) phoneInput.value = hospital.phone || '';
+  if (addressInput) addressInput.value = hospital.address || '';
+  if (cityInput) cityInput.value = hospital.city || '';
+  if (licenseInput) licenseInput.value = hospital.license_number || '';
 
   document.getElementById('hospital-notifications').innerHTML =
     `<h3>Recent Notifications</h3>${(data.notifications || [])
@@ -378,6 +391,34 @@ async function initHospitalDashboard() {
   document.getElementById('organ-request-btn').addEventListener('click', () => sendHospitalEvent('request', 'organ'));
   document.getElementById('blood-request-btn').addEventListener('click', () => sendHospitalEvent('request', 'blood'));
   document.getElementById('send-received-btn').addEventListener('click', () => sendHospitalEvent('received'));
+
+  const hospitalForm = document.getElementById('hospital-edit-form');
+  if (hospitalForm) {
+    hospitalForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        hospital_name: document.getElementById('edit-hospital-name')?.value,
+        phone: document.getElementById('edit-hospital-phone')?.value,
+        address: document.getElementById('edit-hospital-address')?.value,
+        city: document.getElementById('edit-hospital-city')?.value,
+        license_number: document.getElementById('edit-hospital-license')?.value,
+      };
+
+      const updateRes = await fetch(`${API_BASE}/hospital/profile`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify(payload),
+      });
+      const updateData = await updateRes.json();
+      alert(updateData.message || updateData.error);
+      if (updateRes.ok) {
+        if (updateData.hospital) {
+          localStorage.setItem('user', JSON.stringify(updateData.hospital));
+        }
+        window.location.reload();
+      }
+    });
+  }
 }
 
 async function sendHospitalEvent(kind, fixedType = '') {
@@ -413,6 +454,12 @@ async function initDonorDashboard() {
   const weightInput = document.getElementById('edit-weight');
   const dobInput = document.getElementById('edit-dob');
   const lastDonationInput = document.getElementById('edit-last-donation');
+  const fullnameInput = document.getElementById('edit-fullname');
+  const phoneInput = document.getElementById('edit-phone');
+  const bloodGroupInput = document.getElementById('edit-blood-group');
+  if (fullnameInput) fullnameInput.value = donor.fullname || '';
+  if (phoneInput) phoneInput.value = donor.phone || '';
+  if (bloodGroupInput) bloodGroupInput.value = donor.blood_group || '';
   if (weightInput) weightInput.value = donor.weight || '';
   if (dobInput) dobInput.value = donor.dob || '';
   if (lastDonationInput) lastDonationInput.value = donor.last_donation_date || '';
@@ -443,6 +490,9 @@ async function initDonorDashboard() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const payload = {
+        fullname: document.getElementById('edit-fullname')?.value,
+        phone: document.getElementById('edit-phone')?.value,
+        blood_group: document.getElementById('edit-blood-group')?.value,
         weight: document.getElementById('edit-weight')?.value,
         dob: document.getElementById('edit-dob')?.value,
         last_donation_date: document.getElementById('edit-last-donation')?.value,
@@ -454,7 +504,12 @@ async function initDonorDashboard() {
       });
       const updateData = await updateRes.json();
       alert(updateData.message || updateData.error);
-      if (updateRes.ok) window.location.reload();
+      if (updateRes.ok) {
+        if (updateData.donor) {
+          localStorage.setItem('user', JSON.stringify(updateData.donor));
+        }
+        window.location.reload();
+      }
     });
   }
 }

@@ -261,6 +261,21 @@ def serialize_notification(item):
     return item
 
 
+def is_password_valid(stored_password, provided_password):
+    """Support both hashed and legacy plain-text passwords."""
+    if not stored_password or provided_password is None:
+        return False
+
+    try:
+        if check_password_hash(stored_password, provided_password):
+            return True
+    except ValueError:
+        # Legacy records may have plain-text values instead of Werkzeug hashes.
+        pass
+
+    return stored_password == provided_password
+
+
 def notify_all_users(subject, message):
     recipients = list(donors_collection.find({"status": "approved"})) + list(
         hospitals_collection.find({"status": "approved"})
@@ -425,7 +440,7 @@ def register_admin():
 
 @app.route("/auth/login", methods=["POST"])
 def login():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
     role = data.get("role")
     password = data.get("password")
 
@@ -433,10 +448,7 @@ def login():
         email = (data.get("email") or "").strip().lower()
         admin = admins_collection.find_one({"email": email})
         admin_password = admin.get("password", "") if admin else ""
-        is_admin_valid = admin and (
-            check_password_hash(admin_password, password or "")
-            or admin_password == (password or "")
-        )
+        is_admin_valid = admin and is_password_valid(admin_password, password or "")
         if not is_admin_valid:
             return jsonify({"error": "Invalid credentials"}), 401
         token = create_session(admin["_id"], "admin")
@@ -460,7 +472,7 @@ def login():
     if user.get("status") != "approved":
         return jsonify({"error": f"Account is {user.get('status')}. Contact admin."}), 403
 
-    if not check_password_hash(user["password"], password):
+    if not is_password_valid(user.get("password"), password):
         return jsonify({"error": "Invalid credentials"}), 401
 
     token = create_session(user["_id"], role)

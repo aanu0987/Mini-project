@@ -1,89 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register | LifeLink</title>
-  <link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | LifeLink</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="logo"><a href="index.html" style="color:white; text-decoration:none;">Life<span>Link</span></a></div>
-    <a href="index.html" class="btn btn-secondary">Back to Home</a>
-  </nav>
+    <nav class="navbar">
+        <div class="logo"><a href="/">Life<span>Link</span></a></div>
+        <a href="/" class="btn btn-secondary">Back to Home</a>
+    </nav>
 
-  <div class="auth-container">
-    <div class="glass-panel auth-box">
-      <h2 style="text-align:center">Create Account</h2>
-      <div class="auth-tabs">
-        <button class="tab-btn active" data-role="donor">Blood Donor</button>
-        <button class="tab-btn" data-role="hospital">Hospital</button>
-      </div>
+    <div class="auth-container">
+        <div class="glass-panel auth-box">
+            <h2 class="text-center">Create Account</h2>
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-role="donor">Blood Donor</button>
+                <button class="tab-btn" data-role="hospital">Hospital</button>
+            </div>
 
-      <form id="registerForm">
-        <input type="hidden" id="user-role" value="donor">
-        <div id="donor-name-group" class="form-group"><label>Full Name</label><input type="text" id="fullname" required></div>
-        <div class="form-group"><label>Phone</label><input type="tel" id="phone" required></div>
-        <div class="form-group"><label>Email</label><input type="email" id="email" required></div>
-        <div class="form-group"><label>Password</label><input type="password" id="password" required></div>
-        <div class="form-group">
-          <label>City</label>
-          <select id="city" required>
-            <option value="">Select District</option>
-            <option>Ariyalur</option><option>Chengalpattu</option><option>Chennai</option><option>Coimbatore</option>
-            <option>Cuddalore</option><option>Dharmapuri</option><option>Dindigul</option><option>Erode</option>
-            <option>Kallakurichi</option><option>Kancheepuram</option><option>Kanyakumari</option><option>Karur</option>
-            <option>Krishnagiri</option><option>Madurai</option><option>Mayiladuthurai</option><option>Nagapattinam</option>
-            <option>Namakkal</option><option>Nilgiris</option><option>Perambalur</option><option>Pudukkottai</option>
-            <option>Ramanathapuram</option><option>Ranipet</option><option>Salem</option><option>Sivaganga</option>
-            <option>Tenkasi</option><option>Thanjavur</option><option>Theni</option><option>Thoothukudi</option>
-            <option>Tiruchirappalli</option><option>Tirunelveli</option><option>Tirupathur</option><option>Tiruppur</option>
-            <option>Tiruvallur</option><option>Tiruvannamalai</option><option>Tiruvarur</option><option>Vellore</option>
-            <option>Viluppuram</option><option>Virudhunagar</option>
-          </select>
+            <form id="registerForm">
+                <input type="hidden" id="user-role" value="donor">
+                
+                <div id="donor-name-group" class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="fullname" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="phone" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>City</label>
+                    <select id="city" class="form-control" required>
+                        <option value="">Select District</option>
+                        <option>Ariyalur</option><option>Chengalpattu</option><option>Chennai</option>
+                        <option>Coimbatore</option><option>Cuddalore</option><option>Dharmapuri</option>
+                        <option>Dindigul</option><option>Erode</option><option>Kallakurichi</option>
+                        <option>Kancheepuram</option><option>Kanyakumari</option><option>Karur</option>
+                        <option>Krishnagiri</option><option>Madurai</option><option>Mayiladuthurai</option>
+                        <option>Nagapattinam</option><option>Namakkal</option><option>Nilgiris</option>
+                        <option>Perambalur</option><option>Pudukkottai</option><option>Ramanathapuram</option>
+                        <option>Ranipet</option><option>Salem</option><option>Sivaganga</option>
+                        <option>Tenkasi</option><option>Thanjavur</option><option>Theni</option>
+                        <option>Thoothukudi</option><option>Tiruchirappalli</option><option>Tirunelveli</option>
+                        <option>Tirupathur</option><option>Tiruppur</option><option>Tiruvallur</option>
+                        <option>Tiruvannamalai</option><option>Tiruvarur</option><option>Vellore</option>
+                        <option>Viluppuram</option><option>Virudhunagar</option>
+                    </select>
+                </div>
+
+                <div id="donor-fields">
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="gender" class="form-control" required>
+                            <option value="" disabled selected>Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Aadhar Number</label>
+                        <input type="text" id="aadhar" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Weight (kg)</label>
+                        <input type="number" min="45" max="150" id="weight" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date" id="dob" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Blood Group</label>
+                        <select id="bloodGroup" class="form-control" required>
+                            <option value="">Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Last Donation Date</label>
+                        <input type="date" id="last-donation-date" class="form-control">
+                    </div>
+                </div>
+
+                <div id="hospital-fields" style="display:none;">
+                    <div class="form-group">
+                        <label>Hospital Name</label>
+                        <input type="text" id="hospital-name" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>License Number</label>
+                        <input type="text" id="license_number" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" id="address" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Upload NBAH/JCI Certificate (PDF)</label>
+                        <input type="file" id="certificate_pdf" accept="application/pdf" class="form-control">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-block">Register</button>
+            </form>
         </div>
-
-        <div id="donor-fields">
-          <div class="form-group"><label for="gender">Gender:</label>
-            <select id="gender" name="gender" required>
-                  <option value="" disabled selected>Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Aadhar Number</label><input type="text" id="aadhar"></div>
-          <div class="form-group"><label>Weight (kg)</label><input type="number" min="45" max="150" id="weight"></div>
-          <div class="form-group"><label>Date of Birth</label><input type="date" id="dob"></div>
-          <div class="form-group">
-            <label>Blood Group</label>
-            <select id="bloodGroup" required>
-              <option value="">Select Blood Group</option>
-              <option value="A+">A+</option>
-              <option value="A-">A-</option>
-              <option value="B+">B+</option>
-              <option value="B-">B-</option>
-              <option value="AB+">AB+</option>
-              <option value="AB-">AB-</option>
-              <option value="O+">O+</option>
-              <option value="O-">O-</option>
-            </select>
-          </div>
-          <div class="form-group"><label>Last Donation Date</label><input type="date" id="last-donation-date" required></div>
-        </div>
-
-        <div id="hospital-fields" style="display:none;">
-          <div class="form-group"><label>Hospital Name</label><input type="text" id="hospital-name"></div>
-          <div class="form-group"><label>License Number</label><input type="text" id="license_number"></div>
-          <div class="form-group"><label>Address</label><input type="text" id="address"></div>
-          <div class="form-group"><label>Upload NBAH/JCI Certificate (PDF)</label><input type="file" id="certificate_pdf" accept="application/pdf"></div>
-        </div>
-
-        <button type="submit" class="btn" style="width:100%;">Register</button>
-      </form>
     </div>
-  </div>
 
-  <script src="/js/main.js"></script>
+    <footer>
+        <p>&copy; 2026 LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+
+    <script src="/js/main.js"></script>
 </body>
 </html>

@@ -7,11 +7,12 @@ function getToken() {
 
 function authHeaders() {
   const token = getToken();
-  return token
-    ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
-
 
 function isLoggedIn() {
   return Boolean(getToken());
@@ -19,27 +20,33 @@ function isLoggedIn() {
 
 function updateAuthButtonState() {
   const loginBtn = document.getElementById('login-btn');
-  if (!loginBtn) return;
+  const userProfile = document.getElementById('user-profile');
+  const userName = document.getElementById('user-name');
+  
+  if (!loginBtn || !userProfile || !userName) return;
 
   if (isLoggedIn()) {
-    loginBtn.textContent = 'Logout';
-    loginBtn.setAttribute('href', '#');
-    loginBtn.addEventListener('click', (event) => {
-      event.preventDefault();
-      logout();
-    });
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      loginBtn.style.display = 'none';
+      userProfile.style.display = 'flex';
+      userName.textContent = `Welcome, ${user.fullname || 'User'}`;
+    }
   } else {
-    loginBtn.textContent = 'Login / Register';
+    loginBtn.style.display = 'inline-block';
+    userProfile.style.display = 'none';
   }
 }
 
 function guardProtectedPage() {
   const path = window.location.pathname.toLowerCase();
   const isProtected =
-    path.endsWith('/dashboard') ||
-    path.endsWith('/dashboard.html') ||
-    path.endsWith('/blood_donors') ||
-    path.endsWith('/blood_donors.html');
+    path.includes('/dashboard') ||
+    path.includes('/blood_donors') ||
+    path.includes('/admin') ||
+    path.includes('/hospital_dashboard') ||
+    path.includes('/donor_dashboard');
 
   if (isProtected && !isLoggedIn()) {
     alert(AUTH_REQUIRED_MESSAGE);
@@ -53,9 +60,7 @@ function guardProtectedPage() {
 function guardProtectedNavLinks() {
   const protectedSelectors = [
     'a[href="/dashboard"]',
-    'a[href="dashboard.html"]',
     'a[href="/blood_donors"]',
-    'a[href="blood_donors.html"]',
   ];
 
   protectedSelectors.forEach((selector) => {
@@ -76,14 +81,12 @@ async function logout() {
       method: 'POST',
       headers: authHeaders(),
     });
-  } catch (_) {
-    // Ignore network errors and continue local logout.
-  }
+  } catch (_) {}
 
   localStorage.removeItem('token');
   localStorage.removeItem('role');
   localStorage.removeItem('user');
-  window.location.href = '/login';
+  window.location.href = '/logout';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -120,16 +123,13 @@ function initRegister() {
       roleInput.value = role;
       if (donorFields) donorFields.style.display = role === 'donor' ? 'block' : 'none';
       if (hospitalFields) hospitalFields.style.display = role === 'hospital' ? 'block' : 'none';
-      if (donorNameGroup) donorNameGroup.style.display = role === 'donor' ? 'block' : 'none';
-      const fullnameInput = document.getElementById('fullname');
-      const hospitalNameInput = document.getElementById('hospital-name');
-      if (fullnameInput) fullnameInput.required = role === 'donor';
-      if (hospitalNameInput) hospitalNameInput.required = role === 'hospital';
+      if (donorNameGroup) {
+        donorNameGroup.style.display = role === 'donor' ? 'block' : 'none';
+        const fullnameInput = document.getElementById('fullname');
+        if (fullnameInput) fullnameInput.required = role === 'donor';
+      }
     })
   );
-
-  document.getElementById('fullname')?.setAttribute('required', 'required');
-  document.getElementById('hospital-name')?.removeAttribute('required');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -173,14 +173,12 @@ function initRegister() {
         formData.append('certificate_pdf', fileInput.files[0]);
       }
 
-      const token = getToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
-        headers,
         body: formData,
       });
     }
+    
     const data = await res.json();
     if (res.ok) {
       alert(data.message || 'Registration successful');
@@ -214,24 +212,21 @@ function initLogin() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const role = roleInput.value;
-    const password = document.getElementById('password')?.value || document.getElementById('login-password')?.value;
-    const identifier = document.getElementById('identifier')?.value || document.getElementById('login-id')?.value;
+    const password = document.getElementById('password')?.value;
+    const identifier = document.getElementById('identifier')?.value;
 
-    const payload =
-      role === 'admin'
-        ? { role, email: document.getElementById('admin-email')?.value, password }
-        : { role, login_id: identifier, email: identifier, password };
+    const payload = role === 'admin'
+      ? { role, email: document.getElementById('admin-email')?.value, password }
+      : { role, login_id: identifier, email: identifier, password };
 
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(payload),
     });
+    
     const data = await res.json();
     if (!res.ok) {
-      if (data.error && data.error.toLowerCase().includes('register')) {
-        return alert('Register as donor or hospital');
-      }
       return alert(data.error || 'Login failed');
     }
 
@@ -271,66 +266,102 @@ function initAdminRegister() {
 async function initAdminDashboard() {
   const pendingContainer = document.getElementById('pending-users');
   if (!pendingContainer) return;
+  
   const allUsersContainer = document.getElementById('all-users');
   const notificationsContainer = document.getElementById('admin-notifications');
+  const pendingCount = document.getElementById('pending-count');
 
-  const [pendingRes, allUsersRes, notesRes] = await Promise.all([
-    fetch(`${API_BASE}/admin/pending-users`, { headers: authHeaders() }),
-    fetch(`${API_BASE}/admin/all-users`, { headers: authHeaders() }),
-    fetch(`${API_BASE}/admin/notifications`, { headers: authHeaders() }),
-  ]);
+  try {
+    const [pendingRes, allUsersRes, notesRes] = await Promise.all([
+      fetch(`${API_BASE}/admin/pending-users`, { headers: authHeaders() }),
+      fetch(`${API_BASE}/admin/all-users`, { headers: authHeaders() }),
+      fetch(`${API_BASE}/admin/notifications`, { headers: authHeaders() }),
+    ]);
 
-  const pendingData = await pendingRes.json();
-  const allUsersData = await allUsersRes.json();
-  const notesData = await notesRes.json();
+    const pendingData = await pendingRes.json();
+    const allUsersData = await allUsersRes.json();
+    const notesData = await notesRes.json();
 
-  if (!pendingRes.ok) {
-    pendingContainer.innerHTML = `<p>${pendingData.error || 'Unauthorized'}</p>`;
-    return;
-  }
+    if (!pendingRes.ok) {
+      pendingContainer.innerHTML = `<p class="alert alert-danger">${pendingData.error || 'Unauthorized'}</p>`;
+      return;
+    }
 
-  const drawCards = (users, type) =>
-    users
-      .map(
-        (user) => `
-      <div class="glass-panel" style="padding:15px; margin:12px 0;">
-        <b>${user.fullname}</b> (${user.email})<br>
-        Phone: ${user.phone || 'N/A'}
-        <div style="margin-top:8px; display:flex; gap:8px;">
-          <button class="btn" onclick="verifyUser('${type}', '${user._id}', 'approve')">Approve</button>
-          <button class="btn btn-secondary" onclick="rejectPrompt('${type}', '${user._id}')">Reject</button>
-        </div>
-      </div>
-    `
-      )
-      .join('');
+    // Update pending count
+    if (pendingCount) {
+      pendingCount.textContent = (pendingData.hospitals || []).length;
+    }
 
-  pendingContainer.innerHTML = `<h3>Pending Hospital Verifications</h3>${drawCards(
-    pendingData.hospitals || [],
-    'hospital'
-  ) || '<p>No pending hospitals.</p>'}`;
+    // Display pending hospitals
+    pendingContainer.innerHTML = '';
+    const hospitals = pendingData.hospitals || [];
+    
+    if (hospitals.length === 0) {
+      pendingContainer.innerHTML = '<p class="text-muted">No pending hospital verifications.</p>';
+    } else {
+      hospitals.forEach(user => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel';
+        card.style.margin = '12px 0';
+        card.innerHTML = `
+          <div style="padding:15px;">
+            <b>${user.fullname}</b> (${user.email})<br>
+            Phone: ${user.phone || 'N/A'}<br>
+            License: ${user.license_number || 'N/A'}<br>
+            Address: ${user.address || 'N/A'}<br>
+            City: ${user.city || 'N/A'}<br>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              <button class="btn btn-success btn-sm" onclick="verifyUser('hospital', '${user._id}', 'approve')">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectPrompt('hospital', '${user._id}')">Reject</button>
+            </div>
+          </div>
+        `;
+        pendingContainer.appendChild(card);
+      });
+    }
 
-  if (allUsersContainer) {
-    const drawUserLine = (u) => `${u.fullname} (${u.email}) - ${u.status || 'N/A'} ${u.login_id ? `| ID: ${u.login_id}` : ''}`;
-    allUsersContainer.innerHTML = `
-      <h3>Donors (${(allUsersData.donors || []).length})</h3>
-      ${(allUsersData.donors || []).map((u) => `<div style="margin:6px 0;">${drawUserLine(u)}</div>`).join('') || '<p>No donor records.</p>'}
-      <h3 style="margin-top:16px;">Hospitals (${(allUsersData.hospitals || []).length})</h3>
-      ${(allUsersData.hospitals || []).map((u) => `<div style="margin:6px 0;">${drawUserLine(u)}</div>`).join('') || '<p>No hospital records.</p>'}
-    `;
-  }
+    // Display all users
+    if (allUsersContainer) {
+      allUsersContainer.innerHTML = `
+        <h3>Donors (${(allUsersData.donors || []).length})</h3>
+        ${(allUsersData.donors || []).map(u => `
+          <div class="glass-panel" style="padding:12px; margin:8px 0;">
+            <b>${u.fullname}</b> - ${u.email}<br>
+            Phone: ${u.phone || 'N/A'} | Blood Group: ${u.blood_group || 'N/A'}<br>
+            Status: <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">${u.is_verified ? 'Verified' : 'Pending'}</span>
+            ${u.login_id ? `<br>Login ID: ${u.login_id}` : ''}
+          </div>
+        `).join('') || '<p class="text-muted">No donor records.</p>'}
+        
+        <h3 style="margin-top:20px;">Hospitals (${(allUsersData.hospitals || []).length})</h3>
+        ${(allUsersData.hospitals || []).map(u => `
+          <div class="glass-panel" style="padding:12px; margin:8px 0;">
+            <b>${u.fullname}</b> - ${u.email}<br>
+            Phone: ${u.phone || 'N/A'} | City: ${u.city || 'N/A'}<br>
+            Status: <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">${u.is_verified ? 'Verified' : 'Pending'}</span>
+            ${u.login_id ? `<br>Login ID: ${u.login_id}` : ''}
+          </div>
+        `).join('') || '<p class="text-muted">No hospital records.</p>'}
+      `;
+    }
 
-  if (notificationsContainer) {
-    notificationsContainer.innerHTML = (notesData.notifications || [])
-      .map(
-        (n) => `
-        <div class="glass-panel" style="padding:12px; margin:8px 0;">
-          <b>${n.type || 'notification'}</b> - ${n.message}<br>
-          <small>${n.created_at || ''}</small>
-        </div>
-      `
-      )
-      .join('') || '<p>No notifications yet.</p>';
+    // Display notifications
+    if (notificationsContainer) {
+      const notifications = notesData.notifications || [];
+      notificationsContainer.innerHTML = notifications.length === 0 
+        ? '<p class="text-muted">No notifications yet.</p>'
+        : notifications.map(n => `
+          <div class="glass-panel" style="padding:12px; margin:8px 0;">
+            <b>${n.type || 'Notification'}</b><br>
+            ${n.message || ''}<br>
+            <small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
+          </div>
+        `).join('');
+    }
+
+  } catch (error) {
+    console.error('Error loading admin dashboard:', error);
+    pendingContainer.innerHTML = '<p class="alert alert-danger">Error loading dashboard.</p>';
   }
 }
 
@@ -341,83 +372,104 @@ window.rejectPrompt = function (type, userId) {
 };
 
 window.verifyUser = async function (user_type, user_id, action, rejection_reason = '') {
-  const res = await fetch(`${API_BASE}/admin/verify-user`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ user_type, user_id, action, rejection_reason }),
-  });
-  const data = await res.json();
-  alert(data.message || data.error);
-  if (res.ok) window.location.reload();
+  try {
+    const res = await fetch(`${API_BASE}/admin/verify-user`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ user_type, user_id, action, rejection_reason }),
+    });
+    const data = await res.json();
+    alert(data.message || data.error);
+    if (res.ok) window.location.reload();
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error processing request');
+  }
 };
 
 async function initHospitalDashboard() {
   const details = document.getElementById('hospital-details');
   if (!details) return;
 
-  const res = await fetch(`${API_BASE}/hospital/dashboard`, { headers: authHeaders() });
-  const data = await res.json();
-  if (!res.ok) {
-    details.innerHTML = data.error || 'Unauthorized';
-    return;
-  }
+  try {
+    const res = await fetch(`${API_BASE}/hospital/dashboard`, { headers: authHeaders() });
+    const data = await res.json();
+    
+    if (!res.ok) {
+      details.innerHTML = `<p class="alert alert-danger">${data.error || 'Unauthorized'}</p>`;
+      return;
+    }
 
-  const hospital = data.hospital;
-  details.innerHTML = `
-    <h3>${hospital.hospital_name || hospital.fullname}</h3>
-    <p>Email: ${hospital.email}</p>
-    <p>Phone: ${hospital.phone}</p>
-    <p>Address: ${hospital.address || 'Not provided'}</p>
-    <p>City: ${hospital.city || 'Not provided'}</p>
-    <p>Login ID: ${hospital.login_id}</p>
-  `;
+    const hospital = data.hospital;
+    details.innerHTML = `
+      <div style="display: grid; gap: 10px;">
+        <p><strong>Hospital Name:</strong> ${hospital.hospital_name || hospital.fullname}</p>
+        <p><strong>Email:</strong> ${hospital.email}</p>
+        <p><strong>Phone:</strong> ${hospital.phone}</p>
+        <p><strong>Address:</strong> ${hospital.address || 'Not provided'}</p>
+        <p><strong>City:</strong> ${hospital.city || 'Not provided'}</p>
+        <p><strong>Login ID:</strong> ${hospital.login_id}</p>
+        <p><strong>Status:</strong> <span class="badge ${hospital.is_verified ? 'badge-success' : 'badge-warning'}">${hospital.is_verified ? 'Verified' : 'Pending Verification'}</span></p>
+      </div>
+    `;
 
-  const nameInput = document.getElementById('edit-hospital-name');
-  const phoneInput = document.getElementById('edit-hospital-phone');
-  const addressInput = document.getElementById('edit-hospital-address');
-  const cityInput = document.getElementById('edit-hospital-city');
-  const licenseInput = document.getElementById('edit-hospital-license');
-  if (nameInput) nameInput.value = hospital.hospital_name || hospital.fullname || '';
-  if (phoneInput) phoneInput.value = hospital.phone || '';
-  if (addressInput) addressInput.value = hospital.address || '';
-  if (cityInput) cityInput.value = hospital.city || '';
-  if (licenseInput) licenseInput.value = hospital.license_number || '';
+    // Pre-fill edit form
+    document.getElementById('edit-hospital-name').value = hospital.hospital_name || hospital.fullname || '';
+    document.getElementById('edit-hospital-phone').value = hospital.phone || '';
+    document.getElementById('edit-hospital-address').value = hospital.address || '';
+    document.getElementById('edit-hospital-city').value = hospital.city || '';
+    document.getElementById('edit-hospital-license').value = hospital.license_number || '';
 
-  document.getElementById('hospital-notifications').innerHTML =
-    `<h3>Recent Notifications</h3>${(data.notifications || [])
-      .map((n) => `<div class="glass-panel" style="padding:12px; margin:8px 0;">${n.message}</div>`)
-      .join('') || '<p>No notifications yet.</p>'}`;
+    // Show notifications
+    const notificationsEl = document.getElementById('hospital-notifications');
+    if (notificationsEl) {
+      notificationsEl.innerHTML = (data.notifications || []).length === 0
+        ? '<p class="text-muted">No notifications yet.</p>'
+        : (data.notifications || []).map(n => `
+          <div class="glass-panel" style="padding:12px; margin:8px 0;">
+            ${n.message}
+            <br><small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
+          </div>
+        `).join('');
+    }
 
-  document.getElementById('organ-request-btn').addEventListener('click', () => sendHospitalEvent('request', 'organ'));
-  document.getElementById('blood-request-btn').addEventListener('click', () => sendHospitalEvent('request', 'blood'));
-  document.getElementById('send-received-btn').addEventListener('click', () => sendHospitalEvent('received'));
+    // Event listeners for buttons
+    document.getElementById('organ-request-btn')?.addEventListener('click', () => sendHospitalEvent('request', 'organ'));
+    document.getElementById('blood-request-btn')?.addEventListener('click', () => sendHospitalEvent('request', 'blood'));
+    document.getElementById('send-received-btn')?.addEventListener('click', () => sendHospitalEvent('received'));
 
-  const hospitalForm = document.getElementById('hospital-edit-form');
-  if (hospitalForm) {
-    hospitalForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const payload = {
-        hospital_name: document.getElementById('edit-hospital-name')?.value,
-        phone: document.getElementById('edit-hospital-phone')?.value,
-        address: document.getElementById('edit-hospital-address')?.value,
-        city: document.getElementById('edit-hospital-city')?.value,
-        license_number: document.getElementById('edit-hospital-license')?.value,
-      };
+    // Handle form submission
+    const hospitalForm = document.getElementById('hospital-edit-form');
+    if (hospitalForm) {
+      hospitalForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+          hospital_name: document.getElementById('edit-hospital-name')?.value,
+          phone: document.getElementById('edit-hospital-phone')?.value,
+          address: document.getElementById('edit-hospital-address')?.value,
+          city: document.getElementById('edit-hospital-city')?.value,
+          license_number: document.getElementById('edit-hospital-license')?.value,
+        };
 
-      const updateRes = await fetch(`${API_BASE}/hospital/profile`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const updateData = await updateRes.json();
-      alert(updateData.message || updateData.error);
-      if (updateRes.ok) {
-        if (updateData.hospital) {
-          localStorage.setItem('user', JSON.stringify(updateData.hospital));
+        const updateRes = await fetch(`${API_BASE}/hospital/profile`, {
+          method: 'PATCH',
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+        const updateData = await updateRes.json();
+        alert(updateData.message || updateData.error);
+        if (updateRes.ok) {
+          if (updateData.hospital) {
+            localStorage.setItem('user', JSON.stringify(updateData.hospital));
+          }
+          window.location.reload();
         }
-        window.location.reload();
-      }
-    });
+      });
+    }
+
+  } catch (error) {
+    console.error('Error loading hospital dashboard:', error);
+    details.innerHTML = '<p class="alert alert-danger">Error loading dashboard.</p>';
   }
 }
 
@@ -427,90 +479,126 @@ async function sendHospitalEvent(kind, fixedType = '') {
   const endpoint = kind === 'request' ? '/hospital/request' : '/hospital/received';
   const payload = kind === 'request' ? { request_type, details } : { request_type };
 
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  alert(data.message || data.error);
+  try {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    alert(data.message || data.error);
+    if (res.ok) {
+      document.getElementById('request-details').value = '';
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error sending request');
+  }
 }
 
 async function initDonorDashboard() {
   const donation = document.getElementById('last-donation');
   if (!donation) return;
 
-  const res = await fetch(`${API_BASE}/donor/dashboard`, { headers: authHeaders() });
-  const data = await res.json();
-  if (!res.ok) {
-    donation.innerHTML = data.error || 'Unauthorized';
-    return;
-  }
+  try {
+    const res = await fetch(`${API_BASE}/donor/dashboard`, { headers: authHeaders() });
+    const data = await res.json();
+    
+    if (!res.ok) {
+      donation.innerHTML = `<p class="alert alert-danger">${data.error || 'Unauthorized'}</p>`;
+      return;
+    }
 
-  donation.innerHTML = `<h3>Last Donation Date</h3><p>${data.last_donation_date || 'No record available'}</p>`;
-  const ageCard = document.getElementById('donor-age');
-  if (ageCard) ageCard.innerHTML = `<h3>Age</h3><p>${data.age ?? 'Not available'}</p>`;
-  const donor = data.donor || {};
-  const weightInput = document.getElementById('edit-weight');
-  const dobInput = document.getElementById('edit-dob');
-  const lastDonationInput = document.getElementById('edit-last-donation');
-  const fullnameInput = document.getElementById('edit-fullname');
-  const phoneInput = document.getElementById('edit-phone');
-  const bloodGroupInput = document.getElementById('edit-blood-group');
-  if (fullnameInput) fullnameInput.value = donor.fullname || '';
-  if (phoneInput) phoneInput.value = donor.phone || '';
-  if (bloodGroupInput) bloodGroupInput.value = donor.blood_group || '';
-  if (weightInput) weightInput.value = donor.weight || '';
-  if (dobInput) dobInput.value = donor.dob || '';
-  if (lastDonationInput) lastDonationInput.value = donor.last_donation_date || '';
+    donation.innerHTML = `
+      <div style="text-align: center;">
+        <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Last Donation Date</p>
+        <p style="font-size: 1.5rem; color: var(--primary-color);">${data.last_donation_date || 'No record available'}</p>
+      </div>
+    `;
 
-  document.getElementById('hospital-contacts').innerHTML = (data.hospital_contacts || [])
-    .map(
-      (h) => `<div class="glass-panel" style="padding:12px; margin:8px 0;">${h.hospital_name}<br>${h.phone || ''}<br>${h.email || ''}</div>`
-    )
-    .join('') || '<p>No hospitals available.</p>';
+    const ageCard = document.getElementById('donor-age');
+    if (ageCard) {
+      ageCard.innerHTML = `
+        <div style="text-align: center;">
+          <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Age</p>
+          <p style="font-size: 1.5rem; color: var(--primary-color);">${data.age ?? 'Not available'}</p>
+        </div>
+      `;
+    }
 
-  const notificationsEl = document.getElementById('hospital-notifications');
-  if (notificationsEl) {
-    notificationsEl.innerHTML = (data.hospital_notifications || [])
-      .map(
-        (n) => `
+    // Update stats
+    document.getElementById('donation-count').textContent = data.total_donations || 0;
+    document.getElementById('donor-age-value').textContent = data.age || '-';
+
+    const donor = data.donor || {};
+    document.getElementById('edit-fullname').value = donor.fullname || '';
+    document.getElementById('edit-phone').value = donor.phone || '';
+    document.getElementById('edit-blood-group').value = donor.blood_group || '';
+    document.getElementById('edit-weight').value = donor.weight || '';
+    document.getElementById('edit-dob').value = donor.dob || '';
+    document.getElementById('edit-last-donation').value = donor.last_donation_date || '';
+
+    // Hospital contacts
+    const contactsEl = document.getElementById('hospital-contacts');
+    if (contactsEl) {
+      contactsEl.innerHTML = (data.hospital_contacts || []).length === 0
+        ? '<p class="text-muted">No hospitals available.</p>'
+        : (data.hospital_contacts || []).map(h => `
           <div class="glass-panel" style="padding:12px; margin:8px 0;">
-            <b>${(n.type || 'notification').toUpperCase()}</b><br>
+            <b>${h.hospital_name}</b><br>
+            ${h.phone ? `📞 ${h.phone}<br>` : ''}
+            ${h.email ? `📧 ${h.email}` : ''}
+          </div>
+        `).join('');
+    }
+
+    // Notifications
+    const notificationsEl = document.getElementById('hospital-notifications');
+    if (notificationsEl) {
+      notificationsEl.innerHTML = (data.hospital_notifications || []).length === 0
+        ? '<p class="text-muted">No hospital notifications yet.</p>'
+        : (data.hospital_notifications || []).map(n => `
+          <div class="glass-panel" style="padding:12px; margin:8px 0;">
+            <b>${(n.type || 'Notification').toUpperCase()}</b><br>
             ${n.message || ''}<br>
             <small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
           </div>
-        `
-      )
-      .join('') || '<p>No hospital notifications yet.</p>';
-  }
+        `).join('');
+    }
 
-  const form = document.getElementById('donor-edit-form');
-  if (form) {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const payload = {
-        fullname: document.getElementById('edit-fullname')?.value,
-        phone: document.getElementById('edit-phone')?.value,
-        blood_group: document.getElementById('edit-blood-group')?.value,
-        weight: document.getElementById('edit-weight')?.value,
-        dob: document.getElementById('edit-dob')?.value,
-        last_donation_date: document.getElementById('edit-last-donation')?.value,
-      };
-      const updateRes = await fetch(`${API_BASE}/donor/profile`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
-      });
-      const updateData = await updateRes.json();
-      alert(updateData.message || updateData.error);
-      if (updateRes.ok) {
-        if (updateData.donor) {
-          localStorage.setItem('user', JSON.stringify(updateData.donor));
+    // Handle form submission
+    const form = document.getElementById('donor-edit-form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+          fullname: document.getElementById('edit-fullname')?.value,
+          phone: document.getElementById('edit-phone')?.value,
+          blood_group: document.getElementById('edit-blood-group')?.value,
+          weight: document.getElementById('edit-weight')?.value,
+          dob: document.getElementById('edit-dob')?.value,
+          last_donation_date: document.getElementById('edit-last-donation')?.value,
+        };
+
+        const updateRes = await fetch(`${API_BASE}/donor/profile`, {
+          method: 'PATCH',
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        });
+        const updateData = await updateRes.json();
+        alert(updateData.message || updateData.error);
+        if (updateRes.ok) {
+          if (updateData.donor) {
+            localStorage.setItem('user', JSON.stringify(updateData.donor));
+          }
+          window.location.reload();
         }
-        window.location.reload();
-      }
-    });
+      });
+    }
+
+  } catch (error) {
+    console.error('Error loading donor dashboard:', error);
+    donation.innerHTML = '<p class="alert alert-danger">Error loading dashboard.</p>';
   }
 }
 
@@ -518,27 +606,39 @@ async function initPublicDonorList() {
   const bloodDonorsList = document.getElementById('blood-donors-list');
   if (!bloodDonorsList) return;
 
-  const res = await fetch(`${API_BASE}/api/donors`);
-  const data = await res.json();
-  if (!res.ok) {
-    bloodDonorsList.innerHTML = '<p>Unable to load donors.</p>';
-    return;
+  try {
+    const res = await fetch(`${API_BASE}/api/donors`);
+    const data = await res.json();
+    
+    if (!res.ok) {
+      bloodDonorsList.innerHTML = '<p class="alert alert-danger">Unable to load donors.</p>';
+      return;
+    }
+
+    bloodDonorsList.innerHTML = data.length === 0
+      ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No approved blood donors found.</p>'
+      : data.map(d => `
+        <div class="donor-card">
+          <div class="donor-header">
+            <div class="donor-name">${d.fullname}</div>
+            <div class="blood-group">${d.blood_group || 'N/A'}</div>
+          </div>
+          <div class="donor-details">
+            <div class="donor-detail-item"><span>📍</span> ${d.city || 'Location not specified'}</div>
+            <div class="donor-detail-item"><span>📞</span> ${d.phone || 'N/A'}</div>
+            <div class="donor-detail-item"><span>🩸</span> Last Donation: ${d.last_donation_date || 'Never'}</div>
+          </div>
+          <a href="tel:${d.phone}" class="btn contact-btn">Contact Donor</a>
+        </div>
+      `).join('');
+
+    const organ = document.getElementById('organ-donors-list');
+    if (organ) {
+      organ.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">Only blood donor registration is enabled.</p>';
+    }
+
+  } catch (error) {
+    console.error('Error fetching donors:', error);
+    bloodDonorsList.innerHTML = '<p class="alert alert-danger">Failed to load donors. Make sure the backend is running.</p>';
   }
-
-  bloodDonorsList.innerHTML =
-    data
-      .map(
-        (d) => `
-    <div class="glass-panel donor-card" style="padding:15px;">
-      <b>${d.fullname}</b><br>
-      Blood Group: ${d.blood_group || 'N/A'}<br>
-      Phone: ${d.phone || 'N/A'}<br>
-      Last Donation: ${d.last_donation_date || 'N/A'}
-    </div>
-  `
-      )
-      .join('') || '<p>No approved blood donors found.</p>';
-
-  const organ = document.getElementById('organ-donors-list');
-  if (organ) organ.innerHTML = '<p>Only blood donor registration is enabled.</p>';
 }

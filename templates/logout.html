@@ -8,112 +8,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <style>
-        .logout-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-        
-        .logout-card {
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .logout-icon {
-            font-size: 5rem;
-            margin-bottom: 1rem;
-            animation: spin 1s ease;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        .logout-title {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(120deg, var(--primary-color), var(--accent-color));
-          /* -webkit-background-clip: text; */
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .logout-message {
-            color: #8b949e;
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            margin: 2rem 0;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: var(--primary-color);
-            width: 0%;
-            animation: progress 2s ease forwards;
-        }
-        
-        @keyframes progress {
-            to { width: 100%; }
-        }
-        
-        .redirect-message {
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-        
-        .redirect-message a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .redirect-message a:hover {
-            text-decoration: underline;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-    </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">
-            <a href="index.html" style="color:white; text-decoration:none;">Life<span>Link</span></a>
+            <a href="/">Life<span>Link</span></a>
         </div>
-        <a href="index.html" class="btn btn-secondary" style="padding: 8px 16px;">Back to Home</a>
+        <a href="/" class="btn btn-secondary">Back to Home</a>
     </nav>
 
-    <!-- Logout Content -->
     <div class="logout-container">
         <div class="glass-panel logout-card">
             <div class="logout-icon">👋</div>
             <h1 class="logout-title">See You Soon!</h1>
             <p class="logout-message">You have been successfully logged out of your account.</p>
             
-            <div class="progress-bar">
+            <div class="progress-bar-logout">
                 <div class="progress-fill"></div>
             </div>
             
@@ -122,39 +32,22 @@
             </p>
             
             <div class="button-group">
-                <a href="index.html" class="btn">Go to Home</a>
-                <a href="login.html" class="btn btn-secondary">Login Again</a>
+                <a href="/" class="btn">Go to Home</a>
+                <a href="/login" class="btn btn-secondary">Login Again</a>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
     <footer>
-        <p>&copy; 2024 LifeLink Organ Donation Platform. All rights reserved.</p>
+        <p>&copy; 2026 LifeLink Organ Donation Platform. All rights reserved.</p>
     </footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Clear session on logout
             localStorage.removeItem('user');
             localStorage.removeItem('role');
-            const token = localStorage.getItem('token');
             localStorage.removeItem('token');
             
-            // Call logout API
-            fetch('/auth/logout', {
-                method: 'POST',
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Logout successful:', data);
-            })
-            .catch(error => {
-                console.error('Logout error:', error);
-            });
-            
-            // Countdown and redirect
             let countdown = 3;
             const countdownElement = document.getElementById('countdown');
             
@@ -166,7 +59,7 @@
                 
                 if (countdown <= 0) {
                     clearInterval(interval);
-                    window.location.href = 'index.html';
+                    window.location.href = '/';
                 }
             }, 1000);
         });

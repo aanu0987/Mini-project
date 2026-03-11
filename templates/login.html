@@ -1,46 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | LifeLink</title>
-  <link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | LifeLink</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="logo"><a href="index.html" style="color:white; text-decoration:none;">Life<span>Link</span></a></div>
-    <a href="index.html" class="btn btn-secondary">Back to Home</a>
-  </nav>
+    <nav class="navbar">
+        <div class="logo"><a href="/">Life<span>Link</span></a></div>
+        <a href="/" class="btn btn-secondary">Back to Home</a>
+    </nav>
 
-  <div class="auth-container">
-    <div class="glass-panel auth-box">
-      <h2 style="text-align:center;">Welcome Back</h2>
-      <div class="auth-tabs">
-        <button class="tab-btn active" data-role="donor">Donor</button>
-        <button class="tab-btn" data-role="hospital">Hospital</button>
-        <button class="tab-btn" data-role="admin">Admin</button>
-      </div>
+    <div class="auth-container">
+        <div class="glass-panel auth-box">
+            <h2 class="text-center">Welcome Back</h2>
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-role="donor">Donor</button>
+                <button class="tab-btn" data-role="hospital">Hospital</button>
+                <button class="tab-btn" data-role="admin">Admin</button>
+            </div>
 
-      <form id="loginForm">
-        <input type="hidden" id="user-role" value="donor">
-        <div class="form-group" id="admin-email-group" style="display:none;">
-          <label for="admin-email">Email</label>
-          <input type="email" id="admin-email" placeholder="admin@example.com">
+            <form id="loginForm">
+                <input type="hidden" id="user-role" value="donor">
+                <div class="form-group" id="admin-email-group" style="display:none;">
+                    <label for="admin-email">Email</label>
+                    <input type="email" id="admin-email" class="form-control" placeholder="admin@example.com">
+                </div>
+                <div class="form-group" id="login-id-group">
+                    <label for="identifier">Login ID or Email</label>
+                    <input type="text" id="identifier" class="form-control" placeholder="DON123456 or email@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-block">Sign In</button>
+            </form>
+            <p class="text-center mt-3">Don't have an account? <a href="/register">Register here</a></p>
         </div>
-        <div class="form-group" id="login-id-group">
-          <label for="identifier">Login ID or Email</label>
-          <input type="text" id="identifier" placeholder="DON123456 or email@example.com">
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" required placeholder="••••••••">
-        </div>
-        <button type="submit" class="btn" style="width:100%;">Sign In</button>
-      </form>
-      <p style="text-align:center; margin-top:1rem;">Don't have an account? <a href="/register">Register here</a></p>
     </div>
-  </div>
 
-  <script src="/js/main.js"></script>
+    <footer>
+        <p>&copy; 2026 LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+
+    <script src="/js/main.js"></script>
 </body>
 </html>

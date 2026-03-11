@@ -1,31 +1,114 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Donor Dashboard</title><link rel="stylesheet" href="/css/style.css"></head><body>
-<nav class="navbar"><div class="logo">Life<span>Link</span> Donor</div><button id="logout-btn" class="btn btn-secondary">Logout</button></nav>
-<main class="page-header">
-  <h1>Blood Donor Dashboard</h1>
-  <div id="last-donation" class="glass-panel" style="padding:20px; margin:20px 0;"></div>
-
-  <div id="donor-age" class="glass-panel" style="padding:20px; margin:20px 0;"></div>
-
-  <div class="glass-panel" style="padding:20px; margin:20px 0;">
-    <h3>Edit My Details</h3>
-    <p style="opacity:.9; margin-bottom: 12px;">New idea: a "Ready to Donate" profile. Keep your basics updated for faster hospital matching.</p>
-    <form id="donor-edit-form">
-      <div class="form-group"><label>Full Name</label><input id="edit-fullname" type="text" placeholder="Enter your full name"></div>
-      <div class="form-group"><label>Phone</label><input id="edit-phone" type="tel" placeholder="Enter mobile number"></div>
-      <div class="form-group"><label>Blood Group</label><input id="edit-blood-group" type="text" placeholder="e.g. O+"></div>
-      <div class="form-group"><label>Weight (kg)</label><input id="edit-weight" type="number" min="45" max="200" placeholder="Enter weight"></div>
-      <div class="form-group"><label>Date of Birth</label><input id="edit-dob" type="date"></div>
-      <div class="form-group"><label>Last Donation Date</label><input id="edit-last-donation" type="date"></div>
-      <button class="btn" type="submit">Update My Profile</button>
-    </form>
-  </div>
-
-
-  <h3 style="margin-top:24px;">Hospital Notifications</h3>
-  <div id="hospital-notifications"></div>
-
-  <h3 style="margin-top:24px;">Hospital Contact Details</h3>
-  <div id="hospital-contacts"></div>
-</main>
-<script src="/js/main.js"></script>
-</body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donor Dashboard | LifeLink</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Life<span>Link</span> Donor</div>
+        <div class="auth-buttons">
+            <button id="logout-btn" class="btn btn-secondary">Logout</button>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="dashboard-container">
+            <div class="dashboard-header" style="background: linear-gradient(135deg, var(--primary-color), #c0392b);">
+                <h1>Blood Donor Dashboard</h1>
+                <p>Welcome back! Track your donations and help save lives.</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card dashboard-stat blood" id="donation-stats">
+                    <div class="stat-value" id="donation-count">0</div>
+                    <div class="stat-label">Total Donations</div>
+                </div>
+                <div class="stat-card dashboard-stat" id="age-stats">
+                    <div class="stat-value" id="donor-age-value">-</div>
+                    <div class="stat-label">Age</div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Last Donation</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="last-donation" class="text-center p-3">
+                            <p style="color: #8b949e;">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Edit My Details</h3>
+                    </div>
+                    <div class="card-body">
+                        <p style="color: #8b949e; margin-bottom: 12px;">Keep your basics updated for faster hospital matching.</p>
+                        <form id="donor-edit-form">
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input id="edit-fullname" type="text" class="form-control" placeholder="Enter your full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input id="edit-phone" type="tel" class="form-control" placeholder="Enter mobile number">
+                            </div>
+                            <div class="form-group">
+                                <label>Blood Group</label>
+                                <input id="edit-blood-group" type="text" class="form-control" placeholder="e.g. O+">
+                            </div>
+                            <div class="form-group">
+                                <label>Weight (kg)</label>
+                                <input id="edit-weight" type="number" min="45" max="200" class="form-control" placeholder="Enter weight">
+                            </div>
+                            <div class="form-group">
+                                <label>Date of Birth</label>
+                                <input id="edit-dob" type="date" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Last Donation Date</label>
+                                <input id="edit-last-donation" type="date" class="form-control">
+                            </div>
+                            <button class="btn btn-block" type="submit">Update My Profile</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Hospital Notifications</h3>
+                </div>
+                <div class="card-body">
+                    <div id="hospital-notifications"></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Hospital Contact Details</h3>
+                </div>
+                <div class="card-body">
+                    <div id="hospital-contacts"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2026 LifeLink Organ Donation Platform. All rights reserved.</p>
+    </footer>
+    
+    <script src="/js/main.js"></script>
+</body>
+</html>

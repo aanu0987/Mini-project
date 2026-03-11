@@ -10,289 +10,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* Dashboard Specific Styles */
-        .dashboard-container {
-            padding: 2rem 5%;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .dashboard-header {
-            margin-bottom: 2rem;
-            padding: 2rem;
-            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-            border-radius: 16px;
-            color: white;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            padding: 1.5rem;
-            border-radius: 12px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-card.blood {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-        }
-        
-        .stat-card.organ {
-            background: linear-gradient(135deg, #27ae60, #229954);
-        }
-        
-        .stat-card.hospital {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-        }
-        
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            overflow: hidden;
-        }
-        
-        .card-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .card-body {
-            padding: 1.5rem;
-        }
-        
-        .table-responsive {
-            overflow-x: auto;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .table th,
-        .table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        
-        .table th {
-            font-weight: 600;
-            color: #8b949e;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        
-        .badge-success {
-            background: rgba(46, 204, 113, 0.2);
-            color: #2ecc71;
-        }
-        
-        .badge-danger {
-            background: rgba(231, 76, 60, 0.2);
-            color: #e74c3c;
-        }
-        
-        .badge-warning {
-            background: rgba(241, 196, 15, 0.2);
-            color: #f1c40f;
-        }
-        
-        .badge-info {
-            background: rgba(52, 152, 219, 0.2);
-            color: #3498db;
-        }
-        
-        .badge-secondary {
-            background: rgba(149, 165, 166, 0.2);
-            color: #95a5a6;
-        }
-        
-        .btn-sm {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-        }
-        
-        .progress {
-            height: 10px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 0.5rem 0;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: var(--primary-color);
-            transition: width 0.3s;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: var(--bg-color);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-body {
-            padding: 1.5rem;
-        }
-        
-        .close {
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #8b949e;
-        }
-        
-        .close:hover {
-            color: var(--primary-color);
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 8px;
-            color: white;
-            font-size: 1rem;
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-        
-        .log-entry {
-            padding: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-            transition: background 0.3s;
-        }
-        
-        .log-entry:hover {
-            background: rgba(255,255,255,0.05);
-        }
-        
-        .log-time {
-            color: #6c757d;
-            font-size: 0.85rem;
-        }
-        
-        @media (max-width: 768px) {
-            .row {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .table {
-                font-size: 0.9rem;
-            }
-            
-            .btn-sm {
-                padding: 0.25rem 0.5rem;
-            }
-        }
-    </style>
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="logo">
-            <a href="index.html" style="color:white; text-decoration:none;">Life<span>Link</span></a>
+            <a href="/">Life<span>Link</span></a>
         </div>
         <ul class="nav-links">
-            <li><a href="index.html">Home</a></li>
-            <li><a href="blood_donors.html">Find Donors</a></li>
-            <li><a href="#" id="dashboard-link" style="color: var(--primary-color);">Dashboard</a></li>
-            <li><a href="#">About Us</a></li>
+            <li><a href="/">Home</a></li>
+            <li><a href="/blood_donors">Find Donors</a></li>
+            <li><a href="/dashboard" id="dashboard-link" class="active">Dashboard</a></li>
+            <li><a href="/about_us">About Us</a></li>
         </ul>
         <div class="auth-buttons">
-            <a href="login.html" class="btn" id="login-btn">Login / Register</a>
-            <div id="user-profile" style="display: none; align-items: center; gap: 15px;">
-                <span id="user-name" style="color: white; font-weight: 500;">Welcome, User</span>
-                <a href="/logout" class="btn btn-secondary" style="padding: 8px 15px; font-size: 0.9rem;">Logout</a>
+            <a href="/login" class="btn" id="login-btn">Login / Register</a>
+            <div id="user-profile">
+                <span id="user-name"></span>
+                <a href="/logout" class="btn btn-secondary btn-sm">Logout</a>
             </div>
         </div>
     </nav>
@@ -301,6 +36,10 @@
     <main>
         <div class="dashboard-container" id="dashboard-container">
             <!-- Content will be loaded dynamically based on user role -->
+            <div class="text-center" style="padding: 4rem;">
+                <div class="spinner"></div>
+                <p style="color: #8b949e; margin-top: 1rem;">Loading dashboard...</p>
+            </div>
         </div>
     </main>
 
@@ -346,7 +85,7 @@
                         <label>Password</label>
                         <input type="password" class="form-control" name="password" required>
                     </div>
-                    <button type="submit" class="btn" style="width: 100%;">Add User</button>
+                    <button type="submit" class="btn btn-block">Add User</button>
                 </form>
             </div>
         </div>
@@ -395,7 +134,7 @@
                         <label>Additional Notes</label>
                         <textarea class="form-control" name="notes" rows="3"></textarea>
                     </div>
-                    <button type="submit" class="btn" style="width: 100%;">Submit Request</button>
+                    <button type="submit" class="btn btn-block">Submit Request</button>
                 </form>
             </div>
         </div>
@@ -414,8 +153,11 @@
             }
             
             const user = JSON.parse(userStr);
-            document.getElementById('dashboard-link').textContent = role === 'hospital' ? 'Hospital Dashboard' : 
-                                                                   role === 'admin' ? 'Admin Dashboard' : 'Dashboard';
+            const dashboardLink = document.getElementById('dashboard-link');
+            if (dashboardLink) {
+                dashboardLink.textContent = role === 'hospital' ? 'Hospital Dashboard' : 
+                                           role === 'admin' ? 'Admin Dashboard' : 'Dashboard';
+            }
             
             // Load appropriate dashboard
             if (role === 'admin') {
@@ -445,51 +187,30 @@
                 const donations = await donationsRes.json();
                 
                 container.innerHTML = `
-                    <!-- Admin Dashboard -->
                     <div class="dashboard-header">
                         <h1>Admin Dashboard</h1>
                         <p>Welcome back, ${user.fullname}. Here's your system overview.</p>
                     </div>
                     
-                    <!-- Statistics Cards -->
                     <div class="stats-grid">
-                        <div class="stat-card">
+                        <div class="stat-card dashboard-stat">
                             <div class="stat-value">${stats.donors || 0}</div>
                             <div class="stat-label">Total Donors</div>
                         </div>
-                        <div class="stat-card blood">
+                        <div class="stat-card dashboard-stat blood">
                             <div class="stat-value">${stats.hospitals || 0}</div>
                             <div class="stat-label">Partner Hospitals</div>
                         </div>
-                        <div class="stat-card organ">
+                        <div class="stat-card dashboard-stat organ">
                             <div class="stat-value">${stats.donations || 0}</div>
                             <div class="stat-label">Total Donations</div>
                         </div>
-                        <div class="stat-card hospital">
+                        <div class="stat-card dashboard-stat hospital">
                             <div class="stat-value">${pendingHospitals.length || 0}</div>
                             <div class="stat-label">Pending Verifications</div>
                         </div>
                     </div>
                     
-                    <div class="row">
-                        <!-- System Health -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">System Health</h3>
-                            </div>
-                            <div class="card-body">
-                                <div style="margin-bottom: 1rem;">
-                                    <p><i class="fas fa-circle" style="color: #2ecc71;"></i> Database: <strong>Connected</strong></p>
-                                    <p><i class="fas fa-circle" style="color: #2ecc71;"></i> Server: <strong>Running</strong></p>
-                                    <p><i class="fas fa-circle" style="color: #f1c40f;"></i> Storage: <strong>65% Used</strong></p>
-                                    <p><i class="fas fa-circle" style="color: #2ecc71;"></i> API: <strong>Operational</strong></p>
-                                </div>
-                                <p class="text-muted">Last backup: Today, ${new Date().toLocaleTimeString()}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- User Management -->
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">User Management</h3>
@@ -551,7 +272,6 @@
                         </div>
                     </div>
                     
-                    <!-- Pending Hospital Verifications -->
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Pending Hospital Verifications</h3>
@@ -594,44 +314,39 @@
                         </div>
                     </div>
                     
-                    <!-- Recent Activities -->
-                    <div class="row">
-                        <!-- Recent Donations -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">Recent Donations</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Recent Donations</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Donor</th>
+                                            <th>Type</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${donations.map(d => `
                                             <tr>
-                                                <th>Donor</th>
-                                                <th>Type</th>
-                                                <th>Date</th>
-                                                <th>Status</th>
+                                                <td>${d.donor_name || 'Unknown'}</td>
+                                                <td><span class="badge ${d.donation_type === 'blood' ? 'badge-danger' : 'badge-success'}">${d.donation_type}</span></td>
+                                                <td>${new Date(d.donation_date).toLocaleDateString()}</td>
+                                                <td><span class="badge badge-success">${d.status || 'Completed'}</span></td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${donations.map(d => `
-                                                <tr>
-                                                    <td>${d.donor_name || 'Unknown'}</td>
-                                                    <td><span class="badge ${d.donation_type === 'blood' ? 'badge-danger' : 'badge-success'}">${d.donation_type}</span></td>
-                                                    <td>${new Date(d.donation_date).toLocaleDateString()}</td>
-                                                    <td><span class="badge badge-success">${d.status || 'Completed'}</span></td>
-                                                </tr>
-                                            `).join('')}
-                                            ${donations.length === 0 ? `
-                                                <tr>
-                                                    <td colspan="4" style="text-align: center;">No donations yet</td>
-                                                </tr>
-                                            ` : ''}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                        `).join('')}
+                                        ${donations.length === 0 ? `
+                                            <tr>
+                                                <td colspan="4" style="text-align: center;">No donations yet</td>
+                                            </tr>
+                                        ` : ''}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        
                     </div>
                 `;
                 
@@ -639,7 +354,7 @@
                 
             } catch (error) {
                 console.error('Error loading admin dashboard:', error);
-                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading dashboard. Please refresh.</p>';
+                container.innerHTML = '<div class="alert alert-danger" style="text-align: center;">Error loading dashboard. Please refresh.</div>';
             }
         }
         
@@ -656,7 +371,6 @@
                 const donors = data.donors || [];
                 
                 container.innerHTML = `
-                    <!-- Hospital Dashboard -->
                     <div class="dashboard-header" style="background: linear-gradient(135deg, #27ae60, #229954);">
                         <h1>${data.hospital.fullname}</h1>
                         <p>Hospital ID: ${hospitalId}</p>
@@ -667,27 +381,25 @@
                         </p>
                     </div>
                     
-                    <!-- Hospital Stats -->
                     <div class="stats-grid">
-                        <div class="stat-card hospital">
+                        <div class="stat-card dashboard-stat hospital">
                             <div class="stat-value">${donors.length}</div>
                             <div class="stat-label">Available Donors</div>
                         </div>
-                        <div class="stat-card blood">
+                        <div class="stat-card dashboard-stat blood">
                             <div class="stat-value">${requests.filter(r => r.status === 'pending').length}</div>
                             <div class="stat-label">Pending Requests</div>
                         </div>
-                        <div class="stat-card organ">
+                        <div class="stat-card dashboard-stat organ">
                             <div class="stat-value">${Object.values(inventory).reduce((a, b) => a + b, 0)}</div>
                             <div class="stat-label">Blood Units</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat-card dashboard-stat">
                             <div class="stat-value">45</div>
                             <div class="stat-label">Completed Donations</div>
                         </div>
                     </div>
                     
-                    <!-- Quick Actions -->
                     <div class="row">
                         <div class="card">
                             <div class="card-header">
@@ -698,20 +410,13 @@
                                     <button class="btn btn-primary" onclick="openBloodRequestModal()">
                                         <i class="fas fa-tint"></i> Request Blood
                                     </button>
-                                    <button class="btn btn-success" onclick="openOrganRequestModal()">
-                                        <i class="fas fa-heart"></i> Request Organ
-                                    </button>
-                                    <button class="btn btn-info" onclick="updateInventory()">
-                                        <i class="fas fa-boxes"></i> Update Inventory
-                                    </button>
-                                    <button class="btn btn-warning" onclick="window.location.href='blood_donors.html'">
+                                    <button class="btn btn-success" onclick="window.location.href='blood_donors.html'">
                                         <i class="fas fa-search"></i> Find Donors
                                     </button>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Blood Inventory -->
                         <div class="card">
                             <div class="card-header">
                                 <h3 class="card-title">Blood Inventory</h3>
@@ -720,23 +425,20 @@
                                 <div style="display: grid; gap: 1rem;">
                                     ${Object.entries(inventory).map(([blood, quantity]) => `
                                         <div>
-                                            <label>${blood}</label>
+                                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                                <span>${blood}</span>
+                                                <span>${quantity} units</span>
+                                            </div>
                                             <div class="progress">
-                                                <div class="progress-bar" style="width: ${(quantity/50)*100}%;">
-                                                    ${quantity} units
-                                                </div>
+                                                <div class="progress-bar" style="width: ${(quantity/50)*100}%;"></div>
                                             </div>
                                         </div>
                                     `).join('')}
                                 </div>
-                                <button class="btn btn-primary btn-sm" style="margin-top: 1rem;" onclick="manageInventory()">
-                                    Manage Inventory
-                                </button>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Pending Requests -->
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Pending Donation Requests</h3>
@@ -778,7 +480,6 @@
                         </div>
                     </div>
                     
-                    <!-- Available Donors -->
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Available Donors in Your Area</h3>
@@ -826,7 +527,7 @@
                 
             } catch (error) {
                 console.error('Error loading hospital dashboard:', error);
-                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading dashboard. Please refresh.</p>';
+                container.innerHTML = '<div class="alert alert-danger" style="text-align: center;">Error loading dashboard. Please refresh.</div>';
             }
         }
         
@@ -838,33 +539,30 @@
                 const donations = await response.json();
                 
                 container.innerHTML = `
-                    <!-- Donor Dashboard -->
-                    <div class="dashboard-header" style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color));">
+                    <div class="dashboard-header">
                         <h1>Welcome, ${user.fullname}!</h1>
                         <p>Your donor dashboard - track your donations and help save lives.</p>
                     </div>
                     
-                    <!-- Donor Stats -->
                     <div class="stats-grid">
-                        <div class="stat-card blood">
+                        <div class="stat-card dashboard-stat blood">
                             <div class="stat-value">${donations.filter(d => d.donation_type === 'blood').length}</div>
                             <div class="stat-label">Blood Donations</div>
                         </div>
-                        <div class="stat-card organ">
+                        <div class="stat-card dashboard-stat organ">
                             <div class="stat-value">${donations.filter(d => d.donation_type === 'organ').length}</div>
                             <div class="stat-label">Organ Donations</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat-card dashboard-stat">
                             <div class="stat-value">${new Date().getFullYear() - new Date(user.dob).getFullYear() || 25}</div>
                             <div class="stat-label">Age</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat-card dashboard-stat">
                             <div class="stat-value">${user.weight || 70}</div>
                             <div class="stat-label">Weight (kg)</div>
                         </div>
                     </div>
                     
-                    <!-- Quick Actions -->
                     <div class="row">
                         <div class="card">
                             <div class="card-header">
@@ -881,14 +579,10 @@
                                     <button class="btn btn-info" onclick="viewDonationHistory()">
                                         <i class="fas fa-history"></i> View Donation History
                                     </button>
-                                    <button class="btn btn-warning" onclick="emergencyContact()">
-                                        <i class="fas fa-ambulance"></i> Emergency Contact
-                                    </button>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- Donor Profile -->
                         <div class="card">
                             <div class="card-header">
                                 <h3 class="card-title">Your Profile</h3>
@@ -908,7 +602,6 @@
                         </div>
                     </div>
                     
-                    <!-- Recent Donations -->
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Your Recent Donations</h3>
@@ -944,7 +637,6 @@
                         </div>
                     </div>
                     
-                    <!-- Upcoming Donation Events -->
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Upcoming Donation Camps</h3>
@@ -982,7 +674,7 @@
                 
             } catch (error) {
                 console.error('Error loading donor dashboard:', error);
-                container.innerHTML = '<p style="color: #e74c3c; text-align: center;">Error loading dashboard. Please refresh.</p>';
+                container.innerHTML = '<div class="alert alert-danger" style="text-align: center;">Error loading dashboard. Please refresh.</div>';
             }
         }
         
@@ -1031,10 +723,6 @@
         }
         
         // Modal Functions
-        function showAddUserModal() {
-            document.getElementById('addUserModal').classList.add('active');
-        }
-        
         function openBloodRequestModal() {
             document.getElementById('bloodRequestModal').classList.add('active');
         }
@@ -1118,10 +806,6 @@
             window.location.href = `tel:${phone}`;
         }
         
-        function generateReport() {
-            alert('Report generation feature coming soon!');
-        }
-        
         function updateAvailability() {
             alert('Update availability feature coming soon!');
         }
@@ -1130,24 +814,8 @@
             alert('View donation history feature coming soon!');
         }
         
-        function emergencyContact() {
-            alert('Emergency contact: 108');
-        }
-        
         function editProfile() {
             alert('Edit profile feature coming soon!');
-        }
-        
-        function openOrganRequestModal() {
-            alert('Organ request feature coming soon!');
-        }
-        
-        function updateInventory() {
-            alert('Update inventory feature coming soon!');
-        }
-        
-        function manageInventory() {
-            alert('Manage inventory feature coming soon!');
         }
         
         // Form Submissions

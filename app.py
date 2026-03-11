@@ -10,7 +10,11 @@ import json
 from datetime import datetime, timedelta
 import os
 import smtplib
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 TAMILNADU_DISTRICTS = [
     "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri",
@@ -23,29 +27,34 @@ TAMILNADU_DISTRICTS = [
 ]
 
 app = Flask(__name__, 
-            template_folder='templates',  # HTML files go here
-            static_folder='static')        # CSS, JS files go here
-app.secret_key = 'your-secret-key-here-change-in-production'
+            template_folder='templates',
+            static_folder='static')
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-production')
 CORS(app, supports_credentials=True)
 
 # -------------------- Configuration --------------------
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("MONGO_DB", "lifelink")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifecompanion.donors@gmail.com")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
+APP_PASSWORD = os.getenv("APP_PASSWORD", "")  # Set this in production
 
 # MongoDB Connection
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
+try:
+    client = MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    logger.info(f"Connected to MongoDB: {DB_NAME}")
+except Exception as e:
+    logger.error(f"MongoDB connection error: {e}")
+    raise
 
+# Collections
 donors_collection = db['donors']
-hospital_collection = db['hospital']
+hospitals_collection = db['hospitals']
 requests_collection = db['requests']
 inventory_collection = db['inventory']
 campaigns_collection = db['campaigns']
 logs_collection = db['system_logs']
 donations_collection = db['donations']
-hospitals_collection = db['hospitals']
 admins_collection = db['admins']
 notifications_collection = db['notifications']
 sessions_collection = db['sessions']
@@ -59,29 +68,25 @@ def index():
 @app.route('/<page>')
 def serve_page(page):
     """Serve individual HTML pages"""
-    # List of valid pages
-    valid_pages = ['blood_donors', 'dashboard', 'login', 'register', 'logout', 'about_us', 'admin', 'hospital_dashboard', 'donor_dashboard']
+    valid_pages = ['blood_donors', 'dashboard', 'login', 'register', 'logout', 
+                   'about_us', 'admin', 'hospital_dashboard', 'donor_dashboard']
     
     if page in valid_pages:
         return render_template(f'{page}.html')
     
-    # If page not found, return index
     return render_template('index.html')
 
 @app.route('/favicon.ico')
 def favicon():
-    """Handle favicon requests"""
     return '', 204
 
-# Serve static files (CSS, JS)
+# Serve static files
 @app.route('/css/<path:filename>')
 def serve_css(filename):
-    """Serve CSS files"""
     return send_from_directory('static/css', filename)
 
 @app.route('/js/<path:filename>')
 def serve_js(filename):
-    """Serve JavaScript files"""
     return send_from_directory('static/js', filename)
 
 # Custom JSON encoder for ObjectId
@@ -97,8 +102,9 @@ app.json_encoder = JSONEncoder
 
 # -------------------- Utility Functions --------------------
 def send_email(recipient, subject, content):
+    """Send email notification"""
     if not APP_PASSWORD:
-        print(f"⚠️ Email disabled (APP_PASSWORD missing). Intended email to {recipient}: {subject}")
+        logger.info(f"Email disabled. Would send to {recipient}: {subject}")
         return False
 
     msg = EmailMessage()
@@ -111,120 +117,101 @@ def send_email(recipient, subject, content):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(SENDER_EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
-            log_action('email', f'Email sent to {recipient}')
-            return True
+        logger.info(f"Email sent to {recipient}")
+        return True
     except Exception as e:
-        print(f"Email error: {e}")
+        logger.error(f"Email error: {e}")
         return False
 
-def send_welcome_email(user_email, user_name, role):
+def send_welcome_email(user_email, user_name, role, login_id=None):
     """Send welcome email after registration"""
     if role == 'donor':
         content = f"""
-        Hi {user_name},
+Dear {user_name},
 
-        Thank you for registering as a Blood Donor on LifeLink!
+Thank you for registering as a Blood Donor on LifeLink!
 
-        Your registration is now complete. As a donor, you can:
-        - Update your availability status
-        - Receive donation requests
-        - View your donation history
-        - Help save lives in emergencies
+Your registration is now complete. Here are your login details:
+Login ID: {login_id}
 
-        Your willingness to donate makes you a lifesaver!
+As a donor, you can:
+• Update your availability status
+• Receive donation requests from hospitals
+• View your donation history
+• Track your impact on saved lives
 
-        Regards,
-        LifeLink Team
-        """
-    else:
+Your willingness to donate makes you a lifesaver!
+
+Download the LifeLink app or visit our website to get started.
+
+Regards,
+LifeLink Team
+"""
+    else:  # hospital
         content = f"""
-        Hi {user_name},
+Dear {user_name},
 
-        Welcome to LifeLink Hospital Network!
+Welcome to LifeLink Hospital Network!
 
-        Your hospital registration is now complete. You can now:
-        - Post blood/organ requirements
-        - Search for available donors
-        - Manage emergency requests
-        - Coordinate with other hospitals
+Your hospital registration has been approved. Here are your login details:
+Login ID: {login_id}
 
-        Together, we can save more lives.
+You can now:
+• Post blood and organ requirements
+• Search for available donors in your area
+• Manage emergency requests
+• Coordinate with other hospitals
+• Track donation history
 
-        Regards,
-        LifeLink Team
-        """
+Together, we can save more lives.
+
+Regards,
+LifeLink Team
+"""
     
-    return send_email(user_email, f'Welcome to LifeLink - {role.capitalize()} Registration Successful!', content)
+    return send_email(user_email, f'Welcome to LifeLink - Registration Successful!', content)
 
-
-def send_sms(phone, content):
-    """Best-effort SMS sending. Uses Twilio env vars when available; otherwise logs only."""
-    sid = os.getenv("TWILIO_ACCOUNT_SID")
-    token = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_from = os.getenv("TWILIO_PHONE")
-
-    if not sid or not token or not twilio_from:
-        print(f"⚠️ SMS disabled (Twilio env missing). Intended SMS to {phone}: {content[:100]}")
-        return False
-
-    try:
-        from twilio.rest import Client as TwilioClient  # optional dependency
-        twilio_client = TwilioClient(sid, token)
-        twilio_client.messages.create(body=content, from_=twilio_from, to=phone)
-        return True
-    except Exception as exc:
-        print(f"❌ SMS error: {exc}")
-        return False
-
-
-def log_action(action_type, description):
+def log_action(action_type, description, user_id=None):
     """Log system actions"""
-    logs_collection.insert_one({
-        'action_type': action_type,
-        'description': description,
-        'timestamp': datetime.utcnow()
-    })
-
-
-def generate_hospital_id():
-    """Generate unique hospital ID"""
-    while True:
-        hid = "HOSP" + "".join(random.choices(string.digits, k=4))
-        if not hospital_collection.find_one({"hospital_id": hid}):
-            return hid
-
+    try:
+        logs_collection.insert_one({
+            'action_type': action_type,
+            'description': description,
+            'user_id': user_id,
+            'timestamp': datetime.utcnow()
+        })
+    except Exception as e:
+        logger.error(f"Error logging action: {e}")
 
 def generate_unique_id(prefix, collection, field_name="login_id", size=6):
+    """Generate unique ID for users"""
     while True:
         generated = prefix + "".join(random.choices(string.digits, k=size))
         if not collection.find_one({field_name: generated}):
             return generated
 
-
 def generate_token():
     return "".join(random.choices(string.ascii_letters + string.digits, k=48))
 
-
 def create_session(user_id, role):
+    """Create a new session for logged in user"""
     token = generate_token()
-    sessions_collection.insert_one(
-        {
-            "token": token,
-            "user_id": str(user_id),
-            "role": role,
-            "expires_at": datetime.utcnow() + timedelta(hours=12),
-        }
-    )
+    sessions_collection.insert_one({
+        "token": token,
+        "user_id": str(user_id),
+        "role": role,
+        "created_at": datetime.utcnow(),
+        "expires_at": datetime.utcnow() + timedelta(hours=12)
+    })
     return token
-
 
 def parse_bearer_token(auth_header):
     if not auth_header or not auth_header.startswith("Bearer "):
         return None
     return auth_header.split(" ", 1)[1]
 
-
 def get_session(required_roles=None):
+    """Get current session from token"""
     token = parse_bearer_token(request.headers.get("Authorization"))
     if not token:
         return None, (jsonify({"error": "Missing authorization token"}), 401)
@@ -242,684 +229,1113 @@ def get_session(required_roles=None):
 
     return session_data, None
 
-
 def serialize_user(user):
+    """Serialize user object for JSON response"""
     if not user:
         return None
+    user = dict(user)
     user["_id"] = str(user["_id"])
     user.pop("password", None)
     return user
 
-
-def serialize_notification(item):
-    if not item:
-        return None
-    item["_id"] = str(item["_id"])
-    created = item.get("created_at")
-    if isinstance(created, datetime):
-        item["created_at"] = created.isoformat()
-    return item
-
-
-def is_password_valid(stored_password, provided_password):
-    """Support both hashed and legacy plain-text passwords."""
-    if not stored_password or provided_password is None:
-        return False
-
-    try:
-        if check_password_hash(stored_password, provided_password):
-            return True
-    except ValueError:
-        # Legacy records may have plain-text values instead of Werkzeug hashes.
-        pass
-
-    return stored_password == provided_password
-
-
-def notify_all_users(subject, message):
-    recipients = list(donors_collection.find({"status": "approved"})) + list(
-        hospitals_collection.find({"status": "approved"})
-    )
-    email_count = 0
-    sms_count = 0
-    for user in recipients:
-        if user.get("email") and send_email(user["email"], subject, message):
-            email_count += 1
-        if user.get("phone") and send_sms(user["phone"], message):
-            sms_count += 1
-    return {"email_sent": email_count, "sms_sent": sms_count}
-
-
 def create_notification(event_type, message, **extra):
-    payload = {
-        "type": event_type,
-        "message": message,
-        "created_at": datetime.utcnow(),
-    }
-    payload.update(extra)
-    notifications_collection.insert_one(payload)
-
+    """Create a system notification"""
+    try:
+        payload = {
+            "type": event_type,
+            "message": message,
+            "created_at": datetime.utcnow(),
+            "read": False
+        }
+        payload.update(extra)
+        notifications_collection.insert_one(payload)
+    except Exception as e:
+        logger.error(f"Error creating notification: {e}")
 
 # -------------------- Auth & Registration --------------------
 @app.route("/auth/register", methods=["POST"])
 def register_user():
-    data = request.get_json(silent=True) or request.form.to_dict() or {}
-    role = data.get("role")
-    fullname = (data.get("fullname") or "").strip()
-    phone = (data.get("phone") or "").strip()
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password")
+    """Register a new donor or hospital"""
+    try:
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
+        role = data.get("role")
+        fullname = (data.get("fullname") or "").strip()
+        phone = (data.get("phone") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password")
+        city = data.get("city")
 
-    if role not in ["donor", "hospital"]:
-        return jsonify({"error": "Role must be donor or hospital"}), 400
+        logger.info(f"Registration attempt - Role: {role}, Email: {email}")
 
-    if not all([fullname, phone, email, password]):
-        return jsonify({"error": "Missing required fields"}), 400
+        if role not in ["donor", "hospital"]:
+            return jsonify({"error": "Role must be donor or hospital"}), 400
 
-    # donor-only enforcement
-    if role == "donor":
-        donor_type = (data.get("donor_type") or "blood").strip().lower()
-        if donor_type != "blood":
-            return jsonify({"error": "Only blood donors are allowed to register."}), 400
+        if not all([fullname, phone, email, password, city]):
+            return jsonify({"error": "Missing required fields"}), 400
 
-    if donors_collection.find_one({"email": email}) or hospitals_collection.find_one({"email": email}) or admins_collection.find_one({"email": email}):
-        return jsonify({"error": "Email already registered"}), 400
+        # Check if email already exists in any collection
+        if (donors_collection.find_one({"email": email}) or 
+            hospitals_collection.find_one({"email": email}) or 
+            admins_collection.find_one({"email": email})):
+            return jsonify({"error": "Email already registered"}), 400
 
-    payload = {
-        "fullname": fullname,
-        "phone": phone,
-        "email": email,
-        "password": generate_password_hash(password),
-        "role": role,
-        "status": "pending",
-        "login_id": None,
-        "rejection_reason": None,
-        "created_at": datetime.utcnow(),
-    }
+        if role == "donor":
+            # Validate donor specific fields
+            donor_type = (data.get("donor_type") or "blood").strip().lower()
+            if donor_type != "blood":
+                return jsonify({"error": "Only blood donors are allowed to register."}), 400
 
-    if role == "donor":
-        payload.update(
-            {
-                "aadhar": (data.get("aadhar") or "").strip(),
-                "weight": data.get("weight"),
-                "dob": data.get("dob"),
-                "blood_group": (data.get("blood_group") or "").strip().upper(),
-                "last_donation_date": data.get("last_donation_date"),
-                "donor_type": "blood",
-            }
-        )
-        if not all([payload["aadhar"], payload["weight"], payload["dob"], payload["blood_group"]]):
-            return jsonify({"error": "Missing donor fields"}), 400
-        try:
-            donor_weight = float(payload["weight"])
-        except (TypeError, ValueError):
-            return jsonify({"error": "Weight must be a valid number"}), 400
-        if donor_weight < 45:
-            return jsonify({"error": "Donor weight must be at least 45 kg"}), 400
-        payload["weight"] = donor_weight
-        if donors_collection.find_one({"aadhar": payload["aadhar"]}):
-            return jsonify({"error": "Aadhar already exists"}), 400
-        payload["status"] = "approved"
-        payload["login_id"] = generate_unique_id("DON", donors_collection)
-        payload["verified_at"] = datetime.utcnow()
-        inserted = donors_collection.insert_one(payload)
-    else:
-        city = (data.get("city") or "").strip()
-        if city not in TAMILNADU_DISTRICTS:
-            return jsonify({"error": "Please select a valid Tamil Nadu district"}), 400
+            aadhar = (data.get("aadhar") or "").strip()
+            weight = data.get("weight")
+            dob = data.get("dob")
+            blood_group = (data.get("blood_group") or "").strip().upper()
+            last_donation_date = data.get("last_donation_date")
 
-        cert_file = request.files.get("certificate_pdf")
-        certificate_path = None
-        if cert_file:
-            filename = (cert_file.filename or "").strip()
-            if not filename.lower().endswith(".pdf"):
-                return jsonify({"error": "Certificate must be a PDF file"}), 400
+            if not all([aadhar, weight, dob, blood_group]):
+                return jsonify({"error": "Missing donor fields"}), 400
 
-            upload_dir = os.path.join(app.static_folder, "uploads", "certificates")
-            os.makedirs(upload_dir, exist_ok=True)
-            safe_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{filename.replace(' ', '_')}"
-            cert_file.save(os.path.join(upload_dir, safe_name))
-            certificate_path = f"/static/uploads/certificates/{safe_name}"
+            # Validate weight
+            try:
+                weight_float = float(weight)
+                if weight_float < 45:
+                    return jsonify({"error": "Donor weight must be at least 45 kg"}), 400
+            except (TypeError, ValueError):
+                return jsonify({"error": "Weight must be a valid number"}), 400
 
-        payload.update(
-            {
-                "hospital_name": fullname,
-                "address": (data.get("address") or "").strip(),
+            # Check if Aadhar exists
+            if donors_collection.find_one({"aadhar": aadhar}):
+                return jsonify({"error": "Aadhar already exists"}), 400
+
+            # Create donor
+            login_id = generate_unique_id("DON", donors_collection)
+            
+            donor_data = {
+                "fullname": fullname,
+                "phone": phone,
+                "email": email,
+                "password": generate_password_hash(password),
+                "role": role,
                 "city": city,
-                "certificate_pdf": certificate_path,
-                "license_number": (data.get("license_number") or "").strip(),
+                "status": "approved",  # Donors are auto-approved
+                "login_id": login_id,
+                "aadhar": aadhar,
+                "weight": weight_float,
+                "dob": dob,
+                "blood_group": blood_group,
+                "last_donation_date": last_donation_date,
+                "donor_type": "blood",
+                "created_at": datetime.utcnow(),
+                "verified_at": datetime.utcnow(),
+                "available": True
             }
-        )
-        if not payload["hospital_name"]:
-            return jsonify({"error": "Hospital name is required"}), 400
-        if not payload["certificate_pdf"]:
-            return jsonify({"error": "NBAH/JCI certificate PDF is required"}), 400
-        inserted = hospitals_collection.insert_one(payload)
+            
+            result = donors_collection.insert_one(donor_data)
+            
+            # Send welcome email
+            send_welcome_email(email, fullname, "donor", login_id)
+            
+            # Create notification
+            create_notification(
+                "registration",
+                f"New donor registered: {fullname}",
+                user_id=str(result.inserted_id),
+                email=email
+            )
+            
+            log_action('register', f'Donor registered: {fullname}', str(result.inserted_id))
+            
+            return jsonify({
+                "message": "Donor registered successfully", 
+                "id": str(result.inserted_id), 
+                "login_id": login_id
+            }), 201
 
-    send_email(
-        email,
-        "LifeLink registration submitted",
-        "Your registration is submitted and pending admin verification."
-        if role == "hospital"
-        else f"Your donor account is ready. Login ID: {payload['login_id']}",
-    )
+        else:  # Hospital registration
+            # Validate hospital fields
+            license_number = (data.get("license_number") or "").strip()
+            address = (data.get("address") or "").strip()
 
-    message = "Registration submitted for admin verification" if role == "hospital" else "Donor registered successfully"
-    return jsonify({"message": message, "id": str(inserted.inserted_id), "login_id": payload.get("login_id")}), 201
+            if not all([license_number, address]):
+                return jsonify({"error": "Missing hospital fields"}), 400
 
+            # Handle certificate upload
+            cert_file = request.files.get("certificate_pdf")
+            certificate_path = None
+            
+            if cert_file and cert_file.filename:
+                if not cert_file.filename.lower().endswith(".pdf"):
+                    return jsonify({"error": "Certificate must be a PDF file"}), 400
+
+                # Create upload directory if it doesn't exist
+                upload_dir = os.path.join(app.static_folder, "uploads", "certificates")
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                # Save file with timestamp to avoid duplicates
+                timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+                safe_filename = f"{timestamp}_{cert_file.filename.replace(' ', '_')}"
+                filepath = os.path.join(upload_dir, safe_filename)
+                cert_file.save(filepath)
+                certificate_path = f"/static/uploads/certificates/{safe_filename}"
+                logger.info(f"Certificate saved: {certificate_path}")
+            else:
+                return jsonify({"error": "Certificate PDF is required"}), 400
+
+            # Create hospital (pending approval)
+            hospital_data = {
+                "fullname": fullname,
+                "hospital_name": fullname,
+                "phone": phone,
+                "email": email,
+                "password": generate_password_hash(password),
+                "role": role,
+                "city": city,
+                "address": address,
+                "license_number": license_number,
+                "certificate_pdf": certificate_path,
+                "status": "pending",  # Hospitals need admin approval
+                "login_id": None,  # Will be set when approved
+                "created_at": datetime.utcnow(),
+                "verified": False,
+                "is_verified": False
+            }
+            
+            result = hospitals_collection.insert_one(hospital_data)
+            
+            # Send confirmation email
+            send_email(
+                email,
+                "LifeLink Hospital Registration Submitted",
+                f"""
+Dear {fullname},
+
+Thank you for registering with LifeLink Hospital Network.
+
+Your registration has been submitted and is pending admin verification. 
+You will receive an email with your login credentials once your account is approved.
+
+This usually takes 24-48 hours.
+
+Regards,
+LifeLink Team
+                """
+            )
+            
+            # Notify admin
+            create_notification(
+                "pending_verification",
+                f"New hospital registration pending: {fullname}",
+                hospital_id=str(result.inserted_id),
+                email=email
+            )
+            
+            log_action('register', f'Hospital registered (pending): {fullname}', str(result.inserted_id))
+            
+            return jsonify({
+                "message": "Hospital registration submitted for admin verification", 
+                "id": str(result.inserted_id)
+            }), 201
+
+    except Exception as e:
+        logger.error(f"Registration error: {str(e)}")
+        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
 @app.route("/auth/admin/register", methods=["POST"])
 def register_admin():
-    data = request.get_json() or {}
-    fullname = (data.get("fullname") or "").strip()
-    email = (data.get("email") or "").strip().lower()
-    password = data.get("password")
+    """Register the first admin (only one allowed)"""
+    try:
+        data = request.get_json() or {}
+        fullname = (data.get("fullname") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password")
 
-    if not all([fullname, email, password]):
-        return jsonify({"error": "Missing required fields"}), 400
+        if not all([fullname, email, password]):
+            return jsonify({"error": "Missing required fields"}), 400
 
-    existing_admin = admins_collection.find_one()
-    if existing_admin:
-        return jsonify({"error": "Admin account already exists. Only one admin is allowed."}), 400
+        # Check if any admin exists
+        existing_admin = admins_collection.find_one()
+        if existing_admin:
+            return jsonify({"error": "Admin account already exists. Only one admin is allowed."}), 400
 
-    if admins_collection.find_one({"email": email}):
-        return jsonify({"error": "Admin already exists"}), 400
-
-    admins_collection.insert_one(
-        {
+        # Create admin
+        admin_data = {
             "fullname": fullname,
             "email": email,
             "password": generate_password_hash(password),
             "role": "admin",
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.utcnow()
         }
-    )
+        
+        admins_collection.insert_one(admin_data)
+        
+        logger.info(f"Admin registered: {email}")
+        
+        return jsonify({"message": "Admin registered successfully"}), 201
 
-    return jsonify({"message": "Admin registered successfully"}), 201
-
+    except Exception as e:
+        logger.error(f"Admin registration error: {str(e)}")
+        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
 @app.route("/auth/login", methods=["POST"])
 def login():
-    data = request.get_json(silent=True) or request.form.to_dict() or {}
-    role = data.get("role")
-    password = data.get("password")
+    """Login user (donor, hospital, or admin)"""
+    try:
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
+        role = data.get("role")
+        password = data.get("password")
 
-    if role == "admin":
+        logger.info(f"Login attempt - Role: {role}")
+
+        if role == "admin":
+            email = (data.get("email") or "").strip().lower()
+            admin = admins_collection.find_one({"email": email})
+            
+            if not admin or not check_password_hash(admin.get("password", ""), password or ""):
+                return jsonify({"error": "Invalid credentials"}), 401
+            
+            token = create_session(admin["_id"], "admin")
+            log_action('login', f'Admin logged in: {email}', str(admin["_id"]))
+            
+            return jsonify({
+                "message": "Login successful", 
+                "token": token, 
+                "user": serialize_user(admin)
+            }), 200
+
+        # Donor or Hospital login
+        if role not in ["donor", "hospital"]:
+            return jsonify({"error": "Role must be donor, hospital, or admin"}), 400
+
+        login_id = (data.get("login_id") or "").strip().upper()
         email = (data.get("email") or "").strip().lower()
-        admin = admins_collection.find_one({"email": email})
-        admin_password = admin.get("password", "") if admin else ""
-        is_admin_valid = admin and is_password_valid(admin_password, password or "")
-        if not is_admin_valid:
-            return jsonify({"error": "Invalid credentials"}), 401
-        token = create_session(admin["_id"], "admin")
-        return jsonify({"message": "Login successful", "token": token, "user": serialize_user(admin)}), 200
 
-    if role not in ["donor", "hospital"]:
-        return jsonify({"error": "Role must be donor, hospital, or admin"}), 400
+        # Handle if email was passed in login_id field
+        if login_id and "@" in login_id:
+            email = login_id.lower()
+            login_id = ""
 
-    raw_login = (data.get("login_id") or "").strip()
-    login_id = raw_login.upper()
-    email = (data.get("email") or "").strip().lower()
+        if (not login_id and not email) or not password:
+            return jsonify({"error": "Missing login credentials"}), 400
 
-    # Support "Login ID or Email" in a single field from the UI.
-    if raw_login and "@" in raw_login:
-        email = raw_login.lower()
-        login_id = ""
+        # Find user
+        collection = donors_collection if role == "donor" else hospitals_collection
+        query = {"login_id": login_id} if login_id else {"email": email}
+        user = collection.find_one(query)
 
-    if not (login_id or email) or not password:
-        return jsonify({"error": "Missing login_id/email or password"}), 400
+        if not user:
+            return jsonify({"error": "User not found. Please register first."}), 401
 
-    collection = donors_collection if role == "donor" else hospitals_collection
-    query = {"login_id": login_id} if login_id else {"email": email}
-    user = collection.find_one(query)
+        # Check status
+        if user.get("status") != "approved":
+            status_msg = {
+                "pending": "Your account is pending admin approval.",
+                "rejected": f"Your account was rejected. Reason: {user.get('rejection_reason', 'Not specified')}"
+            }.get(user.get("status"), "Account not approved")
+            
+            return jsonify({"error": status_msg}), 403
 
-    if not user:
-        return jsonify({"error": "Register as donor or hospital"}), 401
+        # Verify password
+        if not check_password_hash(user.get("password", ""), password):
+            return jsonify({"error": "Invalid password"}), 401
 
-    if user.get("status") != "approved":
-        return jsonify({"error": f"Account is {user.get('status')}. Contact admin."}), 403
+        # Create session
+        token = create_session(user["_id"], role)
+        log_action('login', f'{role.capitalize()} logged in: {user.get("email")}', str(user["_id"]))
+        
+        return jsonify({
+            "message": "Login successful", 
+            "token": token, 
+            "user": serialize_user(user)
+        }), 200
 
-    if not is_password_valid(user.get("password"), password):
-        return jsonify({"error": "Invalid credentials"}), 401
-
-    token = create_session(user["_id"], role)
-    return jsonify({"message": "Login successful", "token": token, "user": serialize_user(user)}), 200
-
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        return jsonify({"error": f"Login failed: {str(e)}"}), 500
 
 @app.route("/auth/logout", methods=["POST"])
 def logout():
+    """Logout user by invalidating session"""
     token = parse_bearer_token(request.headers.get("Authorization"))
     if token:
         sessions_collection.delete_one({"token": token})
     return jsonify({"message": "Logout successful"}), 200
 
-
-# -------------------- Admin --------------------
+# -------------------- Admin Routes --------------------
 @app.route("/admin/pending-users", methods=["GET"])
 def pending_users():
-    _, error = get_session(required_roles=["admin"])
+    """Get all pending hospital verifications"""
+    session_data, error = get_session(required_roles=["admin"])
     if error:
         return error
 
-    hospitals = [serialize_user(h) for h in hospitals_collection.find({"status": "pending"})]
-    return jsonify({"hospitals": hospitals}), 200
-
+    try:
+        hospitals = []
+        for h in hospitals_collection.find({"status": "pending"}).sort("created_at", -1):
+            hospital = serialize_user(h)
+            hospitals.append(hospital)
+        
+        return jsonify({"hospitals": hospitals}), 200
+    except Exception as e:
+        logger.error(f"Error fetching pending users: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/admin/all-users", methods=["GET"])
 def all_users():
-    _, error = get_session(required_roles=["admin"])
+    """Get all users (donors and hospitals)"""
+    session_data, error = get_session(required_roles=["admin"])
     if error:
         return error
 
-    donors = [serialize_user(d) for d in donors_collection.find().sort("created_at", -1)]
-    hospitals = [serialize_user(h) for h in hospitals_collection.find().sort("created_at", -1)]
-    return jsonify({"donors": donors, "hospitals": hospitals}), 200
-
+    try:
+        donors = [serialize_user(d) for d in donors_collection.find().sort("created_at", -1)]
+        hospitals = [serialize_user(h) for h in hospitals_collection.find().sort("created_at", -1)]
+        
+        return jsonify({"donors": donors, "hospitals": hospitals}), 200
+    except Exception as e:
+        logger.error(f"Error fetching users: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/admin/notifications", methods=["GET"])
 def admin_notifications():
-    _, error = get_session(required_roles=["admin"])
+    """Get admin notifications"""
+    session_data, error = get_session(required_roles=["admin"])
     if error:
         return error
 
-    notes = [serialize_notification(n) for n in notifications_collection.find().sort("created_at", -1).limit(100)]
-    return jsonify({"notifications": notes}), 200
-
+    try:
+        notifications = list(notifications_collection.find().sort("created_at", -1).limit(50))
+        for n in notifications:
+            n["_id"] = str(n["_id"])
+            if isinstance(n.get("created_at"), datetime):
+                n["created_at"] = n["created_at"].isoformat()
+        
+        return jsonify({"notifications": notifications}), 200
+    except Exception as e:
+        logger.error(f"Error fetching notifications: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/admin/verify-user", methods=["POST"])
 def verify_user():
-    _, error = get_session(required_roles=["admin"])
+    """Approve or reject a hospital registration"""
+    session_data, error = get_session(required_roles=["admin"])
     if error:
         return error
 
-    data = request.get_json() or {}
-    user_type = data.get("user_type")  # donor/hospital
-    user_id = data.get("user_id")
-    action = data.get("action")  # approve/reject
-    rejection_reason = (data.get("rejection_reason") or "").strip()
-
-    if user_type != "hospital":
-        return jsonify({"error": "Only hospital verification is supported"}), 400
-    if action not in ["approve", "reject"]:
-        return jsonify({"error": "action must be approve or reject"}), 400
-
-    collection = hospitals_collection
     try:
-        object_id = ObjectId(user_id)
-    except Exception:
-        return jsonify({"error": "Invalid user_id"}), 400
+        data = request.get_json() or {}
+        user_type = data.get("user_type")  # Only hospital supported
+        user_id = data.get("user_id")
+        action = data.get("action")  # approve/reject
+        rejection_reason = (data.get("rejection_reason") or "").strip()
 
-    user = collection.find_one({"_id": object_id})
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+        if user_type != "hospital":
+            return jsonify({"error": "Only hospital verification is supported"}), 400
+        
+        if action not in ["approve", "reject"]:
+            return jsonify({"error": "action must be approve or reject"}), 400
 
-    if action == "approve":
-        login_id = generate_unique_id("HSP", collection)
-        collection.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"status": "approved", "login_id": login_id, "rejection_reason": None, "verified_at": datetime.utcnow()}},
-        )
-        send_email(
-            user["email"],
-            "LifeLink account approved",
-            f"Your account is approved. Your login ID is: {login_id}\nUse this login ID with your password to login.",
-        )
-        create_notification(
-            "verification",
-            f"{user_type.title()} {user.get('fullname')} approved with login ID {login_id}",
-            user_type=user_type,
-            user_email=user.get("email"),
-            action="approved",
-        )
-        return jsonify({"message": "User approved", "login_id": login_id}), 200
+        try:
+            object_id = ObjectId(user_id)
+        except Exception:
+            return jsonify({"error": "Invalid user_id"}), 400
 
-    if not rejection_reason:
-        return jsonify({"error": "Rejection reason required"}), 400
+        hospital = hospitals_collection.find_one({"_id": object_id})
+        if not hospital:
+            return jsonify({"error": "Hospital not found"}), 404
 
-    collection.update_one(
-        {"_id": user["_id"]},
-        {"$set": {"status": "rejected", "rejection_reason": rejection_reason, "verified_at": datetime.utcnow()}},
-    )
-    send_email(
-        user["email"],
-        "LifeLink account rejected",
-        f"Your account registration was rejected. Reason: {rejection_reason}",
-    )
-    create_notification(
-        "verification",
-        f"{user_type.title()} {user.get('fullname')} rejected. Reason: {rejection_reason}",
-        user_type=user_type,
-        user_email=user.get("email"),
-        action="rejected",
-    )
-    return jsonify({"message": "User rejected"}), 200
+        if action == "approve":
+            # Generate login ID for hospital
+            login_id = generate_unique_id("HSP", hospitals_collection)
+            
+            # Update hospital status
+            hospitals_collection.update_one(
+                {"_id": object_id},
+                {"$set": {
+                    "status": "approved",
+                    "login_id": login_id,
+                    "verified": True,
+                    "is_verified": True,
+                    "rejection_reason": None,
+                    "verified_at": datetime.utcnow()
+                }}
+            )
+            
+            # Send approval email with login ID
+            send_welcome_email(
+                hospital["email"],
+                hospital.get("hospital_name", hospital.get("fullname")),
+                "hospital",
+                login_id
+            )
+            
+            # Create notification
+            create_notification(
+                "verification",
+                f"Hospital {hospital.get('fullname')} approved with login ID {login_id}",
+                hospital_id=user_id,
+                action="approved"
+            )
+            
+            log_action('verify', f'Hospital approved: {hospital.get("fullname")}', user_id)
+            
+            return jsonify({
+                "message": "Hospital approved successfully", 
+                "login_id": login_id
+            }), 200
 
+        else:  # reject
+            if not rejection_reason:
+                return jsonify({"error": "Rejection reason required"}), 400
 
-# -------------------- Hospital --------------------
+            hospitals_collection.update_one(
+                {"_id": object_id},
+                {"$set": {
+                    "status": "rejected",
+                    "rejection_reason": rejection_reason,
+                    "verified_at": datetime.utcnow()
+                }}
+            )
+            
+            # Send rejection email
+            send_email(
+                hospital["email"],
+                "LifeLink Hospital Registration Status",
+                f"""
+Dear {hospital.get('fullname')},
+
+Thank you for your interest in joining LifeLink Hospital Network.
+
+Unfortunately, your registration could not be approved at this time.
+Reason: {rejection_reason}
+
+If you believe this is an error or would like to reapply with corrected information,
+please contact our support team.
+
+Regards,
+LifeLink Team
+                """
+            )
+            
+            # Create notification
+            create_notification(
+                "verification",
+                f"Hospital {hospital.get('fullname')} rejected. Reason: {rejection_reason}",
+                hospital_id=user_id,
+                action="rejected"
+            )
+            
+            log_action('verify', f'Hospital rejected: {hospital.get("fullname")}', user_id)
+            
+            return jsonify({"message": "Hospital rejected"}), 200
+
+    except Exception as e:
+        logger.error(f"Verification error: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# -------------------- Hospital Routes --------------------
 @app.route("/hospital/dashboard", methods=["GET"])
 def hospital_dashboard():
+    """Get hospital dashboard data"""
     session_data, error = get_session(required_roles=["hospital"])
     if error:
         return error
 
-    hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
-    if not hospital:
-        return jsonify({"error": "Hospital not found"}), 404
+    try:
+        hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+        if not hospital:
+            return jsonify({"error": "Hospital not found"}), 404
 
-    recent = list(
-        notifications_collection.find({"hospital_id": str(hospital["_id"])}).sort("created_at", -1).limit(10)
-    )
-    for item in recent:
-        item["_id"] = str(item["_id"])
+        # Get recent notifications for this hospital
+        recent = list(notifications_collection.find(
+            {"hospital_id": str(hospital["_id"])}
+        ).sort("created_at", -1).limit(20))
+        
+        for item in recent:
+            item["_id"] = str(item["_id"])
+            if isinstance(item.get("created_at"), datetime):
+                item["created_at"] = item["created_at"].isoformat()
 
-    return jsonify({"hospital": serialize_user(hospital), "notifications": recent}), 200
+        # Get pending requests
+        pending_requests = list(requests_collection.find({
+            "hospital_id": str(hospital["_id"]),
+            "status": "pending"
+        }).sort("created_at", -1))
 
+        # Get donors in same city
+        nearby_donors = list(donors_collection.find({
+            "city": hospital.get("city"),
+            "status": "approved",
+            "available": True
+        }).limit(20))
+
+        return jsonify({
+            "hospital": serialize_user(hospital),
+            "notifications": recent,
+            "pending_requests": pending_requests,
+            "nearby_donors": [serialize_user(d) for d in nearby_donors]
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Hospital dashboard error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/hospital/request", methods=["POST"])
 def hospital_request():
+    """Create a new donation request"""
     session_data, error = get_session(required_roles=["hospital"])
     if error:
         return error
 
-    hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
-    if not hospital:
-        return jsonify({"error": "Hospital not found"}), 404
+    try:
+        hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+        if not hospital:
+            return jsonify({"error": "Hospital not found"}), 404
 
-    data = request.get_json() or {}
-    request_type = (data.get("request_type") or "").lower()  # organ/blood
-    details = (data.get("details") or "").strip()
+        data = request.get_json() or {}
+        request_type = (data.get("request_type") or "").lower()  # organ/blood
+        details = (data.get("details") or "").strip()
+        blood_group = data.get("blood_group")
+        quantity = data.get("quantity", 1)
+        urgency = data.get("urgency", "normal")
+        patient_name = data.get("patient_name")
 
-    if request_type not in ["organ", "blood"]:
-        return jsonify({"error": "request_type must be organ or blood"}), 400
+        if request_type not in ["organ", "blood"]:
+            return jsonify({"error": "request_type must be organ or blood"}), 400
 
-    message = (
-        f"{hospital.get('hospital_name', hospital.get('fullname'))} has requested {request_type}.\n"
-        f"Details: {details or 'Emergency support required.'}\n"
-        f"Contact: {hospital.get('phone')}"
-    )
+        if request_type == "blood" and not blood_group:
+            return jsonify({"error": "Blood group required for blood requests"}), 400
 
-    create_notification(
-        "request",
-        message,
-        hospital_id=str(hospital["_id"]),
-        hospital_name=hospital.get("hospital_name", hospital.get("fullname")),
-        request_type=request_type,
-        details=details,
-    )
+        # Create request record
+        request_data = {
+            "hospital_id": str(hospital["_id"]),
+            "hospital_name": hospital.get("hospital_name", hospital.get("fullname")),
+            "hospital_phone": hospital.get("phone"),
+            "hospital_city": hospital.get("city"),
+            "request_type": request_type,
+            "blood_group": blood_group,
+            "quantity": quantity,
+            "urgency": urgency,
+            "patient_name": patient_name,
+            "details": details,
+            "status": "pending",
+            "created_at": datetime.utcnow()
+        }
+        
+        request_result = requests_collection.insert_one(request_data)
 
-    stats = notify_all_users(
-        f"LifeLink {request_type.capitalize()} Request Alert",
-        message,
-    )
-    return jsonify({"message": "Request notification sent", "notification_stats": stats}), 200
+        # Create notification message
+        message = (
+            f"URGENT: {hospital.get('hospital_name', hospital.get('fullname'))} "
+            f"requires {request_type.upper()}"
+        )
+        
+        if request_type == "blood" and blood_group:
+            message += f" - Blood Group: {blood_group}"
+        
+        if quantity:
+            message += f" (Quantity: {quantity} units)"
+        
+        if urgency == "emergency":
+            message = "🚨 EMERGENCY - " + message
+        
+        message += f"\nContact: {hospital.get('phone')}"
+        
+        if details:
+            message += f"\nDetails: {details}"
 
+        # Create notification
+        create_notification(
+            "request",
+            message,
+            hospital_id=str(hospital["_id"]),
+            hospital_name=hospital.get("hospital_name", hospital.get("fullname")),
+            request_type=request_type,
+            request_id=str(request_result.inserted_id),
+            urgency=urgency
+        )
+
+        # Find matching donors and notify them
+        if request_type == "blood" and blood_group:
+            matching_donors = donors_collection.find({
+                "blood_group": blood_group,
+                "city": hospital.get("city"),
+                "status": "approved",
+                "available": True
+            })
+            
+            for donor in matching_donors:
+                # Send SMS if phone available
+                if donor.get("phone"):
+                    # You would integrate SMS here
+                    pass
+                
+                # Send email
+                if donor.get("email"):
+                    send_email(
+                        donor["email"],
+                        f"URGENT: Blood Donation Request in {hospital.get('city')}",
+                        f"""
+Dear {donor.get('fullname')},
+
+A hospital in your area needs your help!
+
+{message}
+
+If you're available to donate, please contact the hospital directly.
+
+Thank you for being a lifesaver!
+
+LifeLink Team
+                        """
+                    )
+
+        log_action('request', f'{request_type.capitalize()} request created', str(hospital["_id"]))
+        
+        return jsonify({
+            "message": "Request created successfully",
+            "request_id": str(request_result.inserted_id)
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error creating request: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/hospital/received", methods=["POST"])
 def hospital_received():
+    """Mark donation as received"""
     session_data, error = get_session(required_roles=["hospital"])
     if error:
         return error
 
-    hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
-    if not hospital:
-        return jsonify({"error": "Hospital not found"}), 404
+    try:
+        hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+        if not hospital:
+            return jsonify({"error": "Hospital not found"}), 404
 
-    data = request.get_json() or {}
-    request_type = (data.get("request_type") or "").lower()
+        data = request.get_json() or {}
+        request_type = (data.get("request_type") or "").lower()
+        request_id = data.get("request_id")
 
-    if request_type not in ["organ", "blood"]:
-        return jsonify({"error": "request_type must be organ or blood"}), 400
+        if request_type not in ["organ", "blood"]:
+            return jsonify({"error": "request_type must be organ or blood"}), 400
 
-    message = (
-        f"{hospital.get('hospital_name', hospital.get('fullname'))} has received the requested {request_type}. "
-        "Thank you for your timely support and generosity."
-    )
+        # Update request if ID provided
+        if request_id:
+            requests_collection.update_one(
+                {"_id": ObjectId(request_id)},
+                {"$set": {
+                    "status": "completed",
+                    "completed_at": datetime.utcnow()
+                }}
+            )
 
-    create_notification(
-        "received",
-        message,
-        hospital_id=str(hospital["_id"]),
-        hospital_name=hospital.get("hospital_name", hospital.get("fullname")),
-        request_type=request_type,
-    )
-
-    stats = notify_all_users(
-        f"LifeLink {request_type.capitalize()} Received Update",
-        message,
-    )
-    return jsonify({"message": "Received notification sent", "notification_stats": stats}), 200
-
-
-# -------------------- Donor --------------------
-@app.route("/donor/dashboard", methods=["GET"])
-def donor_dashboard():
-    session_data, error = get_session(required_roles=["donor"])
-    if error:
-        return error
-
-    donor = donors_collection.find_one({"_id": ObjectId(session_data["user_id"])})
-    if not donor:
-        return jsonify({"error": "Donor not found"}), 404
-
-    hospital_contacts = [
-        {
-            "hospital_name": h.get("hospital_name", h.get("fullname")),
-            "phone": h.get("phone"),
-            "email": h.get("email"),
-        }
-        for h in hospitals_collection.find({"status": "approved"})
-    ]
-
-    hospital_notifications = [
-        serialize_notification(item)
-        for item in notifications_collection.find(
-            {"type": {"$in": ["request", "received"]}}
+        # Create thank you message
+        message = (
+            f"❤️ Thank you message from {hospital.get('hospital_name', hospital.get('fullname'))}\n\n"
+            f"We have received the {request_type} donation. "
+            f"Your generosity has helped save a life today!"
         )
-        .sort("created_at", -1)
-        .limit(20)
-    ]
 
-    age = None
-    dob_raw = donor.get("dob")
-    if dob_raw:
-        try:
-            dob_date = datetime.strptime(dob_raw, "%Y-%m-%d").date()
-            today = datetime.utcnow().date()
-            age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
-        except ValueError:
-            age = None
+        # Create notification
+        create_notification(
+            "received",
+            message,
+            hospital_id=str(hospital["_id"]),
+            hospital_name=hospital.get("hospital_name", hospital.get("fullname")),
+            request_type=request_type
+        )
 
-    return jsonify(
-        {
-            "donor": serialize_user(donor),
-            "last_donation_date": donor.get("last_donation_date"),
-            "age": age,
-            "hospital_contacts": hospital_contacts,
-            "hospital_notifications": hospital_notifications,
-        }
-    ), 200
+        # Send thank you to all donors
+        donors = donors_collection.find({
+            "city": hospital.get("city"),
+            "status": "approved"
+        })
+        
+        for donor in donors:
+            if donor.get("email"):
+                send_email(
+                    donor["email"],
+                    f"Thank You from {hospital.get('hospital_name')} - Life Saved!",
+                    f"""
+Dear {donor.get('fullname')},
 
+{message}
 
-@app.route("/donor/profile", methods=["PATCH"])
-def update_donor_profile():
-    session_data, error = get_session(required_roles=["donor"])
-    if error:
-        return error
+Your willingness to donate makes a difference. Thank you for being part of the LifeLink community!
 
-    donor = donors_collection.find_one({"_id": ObjectId(session_data["user_id"])})
-    if not donor:
-        return jsonify({"error": "Donor not found"}), 404
+Regards,
+LifeLink Team
+                    """
+                )
 
-    data = request.get_json() or {}
-    allowed_fields = ["fullname", "phone", "weight", "last_donation_date", "dob", "blood_group"]
-    update_payload = {field: data[field] for field in allowed_fields if field in data}
+        log_action('received', f'{request_type.capitalize()} received', str(hospital["_id"]))
+        
+        return jsonify({"message": "Thank you notification sent"}), 200
 
-    if "blood_group" in update_payload and isinstance(update_payload["blood_group"], str):
-        update_payload["blood_group"] = update_payload["blood_group"].strip().upper()
-
-    if not update_payload:
-        return jsonify({"error": "No valid fields to update"}), 400
-
-    if "weight" in update_payload:
-        try:
-            new_weight = float(update_payload["weight"])
-        except (TypeError, ValueError):
-            return jsonify({"error": "Weight must be a valid number"}), 400
-        if new_weight < 45:
-            return jsonify({"error": "Weight must be at least 45 kg"}), 400
-        update_payload["weight"] = new_weight
-
-    donors_collection.update_one({"_id": donor["_id"]}, {"$set": update_payload})
-    updated = donors_collection.find_one({"_id": donor["_id"]})
-    return jsonify({"message": "Profile updated", "donor": serialize_user(updated)}), 200
-
+    except Exception as e:
+        logger.error(f"Error marking received: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/hospital/profile", methods=["PATCH"])
 def update_hospital_profile():
+    """Update hospital profile"""
     session_data, error = get_session(required_roles=["hospital"])
     if error:
         return error
 
-    hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
-    if not hospital:
-        return jsonify({"error": "Hospital not found"}), 404
+    try:
+        hospital = hospitals_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+        if not hospital:
+            return jsonify({"error": "Hospital not found"}), 404
 
-    data = request.get_json() or {}
-    allowed_fields = ["hospital_name", "phone", "address", "city", "license_number"]
-    update_payload = {field: data[field] for field in allowed_fields if field in data}
+        data = request.get_json() or {}
+        allowed_fields = ["hospital_name", "phone", "address", "city", "license_number"]
+        update_payload = {}
 
-    if "city" in update_payload and update_payload["city"] not in TAMILNADU_DISTRICTS:
-        return jsonify({"error": "Please select a valid Tamil Nadu district"}), 400
+        for field in allowed_fields:
+            if field in data and data[field]:
+                update_payload[field] = data[field].strip()
+                if field == "hospital_name":
+                    update_payload["fullname"] = data[field].strip()
 
-    if "hospital_name" in update_payload:
-        update_payload["fullname"] = update_payload["hospital_name"]
+        if "city" in update_payload and update_payload["city"] not in TAMILNADU_DISTRICTS:
+            return jsonify({"error": "Please select a valid Tamil Nadu district"}), 400
 
-    if not update_payload:
-        return jsonify({"error": "No valid fields to update"}), 400
+        if not update_payload:
+            return jsonify({"error": "No valid fields to update"}), 400
 
-    hospitals_collection.update_one({"_id": hospital["_id"]}, {"$set": update_payload})
-    updated = hospitals_collection.find_one({"_id": hospital["_id"]})
-    return jsonify({"message": "Hospital profile updated", "hospital": serialize_user(updated)}), 200
+        hospitals_collection.update_one(
+            {"_id": hospital["_id"]},
+            {"$set": update_payload}
+        )
+        
+        updated = hospitals_collection.find_one({"_id": hospital["_id"]})
+        log_action('update', f'Hospital profile updated: {hospital.get("fullname")}', str(hospital["_id"]))
+        
+        return jsonify({
+            "message": "Hospital profile updated",
+            "hospital": serialize_user(updated)
+        }), 200
 
+    except Exception as e:
+        logger.error(f"Error updating hospital: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# -------------------- Donor Routes --------------------
+@app.route("/donor/dashboard", methods=["GET"])
+def donor_dashboard():
+    """Get donor dashboard data"""
+    session_data, error = get_session(required_roles=["donor"])
+    if error:
+        return error
+
+    try:
+        donor = donors_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+        if not donor:
+            return jsonify({"error": "Donor not found"}), 404
+
+        # Get approved hospitals
+        hospitals = [{
+            "hospital_name": h.get("hospital_name", h.get("fullname")),
+            "phone": h.get("phone"),
+            "email": h.get("email"),
+            "city": h.get("city"),
+            "address": h.get("address")
+        } for h in hospitals_collection.find({"status": "approved"})]
+
+        # Get recent requests/notifications
+        notifications = list(notifications_collection.find({
+            "type": {"$in": ["request", "received"]}
+        }).sort("created_at", -1).limit(50))
+
+        for n in notifications:
+            n["_id"] = str(n["_id"])
+            if isinstance(n.get("created_at"), datetime):
+                n["created_at"] = n["created_at"].isoformat()
+
+        # Calculate age from DOB
+        age = None
+        dob_raw = donor.get("dob")
+        if dob_raw:
+            try:
+                if isinstance(dob_raw, str):
+                    dob_date = datetime.strptime(dob_raw, "%Y-%m-%d").date()
+                else:
+                    dob_date = dob_raw
+                today = datetime.utcnow().date()
+                age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+            except (ValueError, TypeError):
+                age = None
+
+        # Get donation count
+        donation_count = donations_collection.count_documents({
+            "donor_id": str(donor["_id"])
+        })
+
+        return jsonify({
+            "donor": serialize_user(donor),
+            "last_donation_date": donor.get("last_donation_date"),
+            "age": age,
+            "total_donations": donation_count,
+            "hospital_contacts": hospitals,
+            "hospital_notifications": notifications
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Donor dashboard error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/donor/profile", methods=["PATCH"])
+def update_donor_profile():
+    """Update donor profile"""
+    session_data, error = get_session(required_roles=["donor"])
+    if error:
+        return error
+
+    try:
+        donor = donors_collection.find_one({"_id": ObjectId(session_data["user_id"])})
+        if not donor:
+            return jsonify({"error": "Donor not found"}), 404
+
+        data = request.get_json() or {}
+        allowed_fields = ["fullname", "phone", "weight", "last_donation_date", "dob", "blood_group", "available"]
+        update_payload = {}
+
+        for field in allowed_fields:
+            if field in data and data[field] is not None:
+                if field == "blood_group" and isinstance(data[field], str):
+                    update_payload[field] = data[field].strip().upper()
+                else:
+                    update_payload[field] = data[field]
+
+        if not update_payload:
+            return jsonify({"error": "No valid fields to update"}), 400
+
+        # Validate weight if provided
+        if "weight" in update_payload:
+            try:
+                new_weight = float(update_payload["weight"])
+                if new_weight < 45:
+                    return jsonify({"error": "Weight must be at least 45 kg"}), 400
+                update_payload["weight"] = new_weight
+            except (TypeError, ValueError):
+                return jsonify({"error": "Weight must be a valid number"}), 400
+
+        donors_collection.update_one(
+            {"_id": donor["_id"]},
+            {"$set": update_payload}
+        )
+        
+        updated = donors_collection.find_one({"_id": donor["_id"]})
+        log_action('update', f'Donor profile updated: {donor.get("fullname")}', str(donor["_id"]))
+        
+        return jsonify({
+            "message": "Profile updated",
+            "donor": serialize_user(updated)
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error updating donor: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # -------------------- Public APIs --------------------
 @app.route("/api/donors", methods=["GET"])
 def list_donors():
-    donors = []
-    for donor in donors_collection.find({"status": "approved", "donor_type": "blood"}):
-        donors.append(
-            {
+    """Public list of approved blood donors"""
+    try:
+        donors = []
+        for donor in donors_collection.find({
+            "status": "approved",
+            "donor_type": "blood"
+        }).limit(100):
+            donors.append({
                 "fullname": donor.get("fullname"),
                 "phone": donor.get("phone"),
                 "blood_group": donor.get("blood_group"),
+                "city": donor.get("city"),
                 "last_donation_date": donor.get("last_donation_date"),
-            }
-        )
-    return jsonify(donors), 200
-
+                "available": donor.get("available", True)
+            })
+        
+        return jsonify(donors), 200
+    except Exception as e:
+        logger.error(f"Error listing donors: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
+    """Get system statistics"""
     try:
-        donors_count = donors_collection.count_documents({})
-        hospitals_count = hospital_collection.count_documents({})
-        
-        # Calculate total donations
+        donors_count = donors_collection.count_documents({"status": "approved"})
+        hospitals_count = hospitals_collection.count_documents({"status": "approved"})
         donations_count = donations_collection.count_documents({})
         
-        # Calculate organs received (for demo, using donations count)
-        organs_received = donations_count
-        
-        # Calculate active recipients (for demo)
-        recipients_count = requests_collection.count_documents({"status": "pending"})
+        # For demo purposes, use some calculations
+        saved_lives = donations_count * 2  # Each donation can save up to 2 lives
         
         return jsonify({
             "donors": donors_count,
             "hospitals": hospitals_count,
-            "saved": organs_received,
-            "recipients": recipients_count,
+            "saved": saved_lives,
             "donations": donations_count
         }), 200
     except Exception as e:
+        logger.error(f"Error getting stats: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/users', methods=['GET'])
 def get_users():
+    """Get all users (admin only)"""
+    session_data, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
     try:
         donors = list(donors_collection.find({}, {'password': 0}))
-        hospitals = list(hospital_collection.find({}, {'password': 0}))
+        hospitals = list(hospitals_collection.find({}, {'password': 0}))
         
-        # Add type field to each user
+        # Add type field
         for donor in donors:
             donor['user_type'] = 'donor'
+            donor['_id'] = str(donor['_id'])
+        
         for hospital in hospitals:
             hospital['user_type'] = 'hospital'
+            hospital['_id'] = str(hospital['_id'])
         
         all_users = donors + hospitals
         return jsonify(all_users), 200
     except Exception as e:
+        logger.error(f"Error getting users: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/pending-hospitals', methods=['GET'])
 def get_pending_hospitals():
+    """Get pending hospitals (admin only)"""
+    session_data, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
     try:
-        pending = list(hospital_collection.find({"verified": False}, {'password': 0}))
+        pending = list(hospitals_collection.find(
+            {"status": "pending"}, 
+            {'password': 0}
+        ))
+        
+        for hospital in pending:
+            hospital['_id'] = str(hospital['_id'])
+        
         return jsonify(pending), 200
     except Exception as e:
+        logger.error(f"Error getting pending hospitals: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/verify-hospital/<hospital_id>', methods=['POST'])
-def verify_hospital(hospital_id):
+def verify_hospital_api(hospital_id):
+    """Verify a hospital (admin only)"""
+    session_data, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
     try:
-        result = hospital_collection.update_one(
+        result = hospitals_collection.update_one(
             {"_id": ObjectId(hospital_id)},
-            {"$set": {"verified": True, "is_verified": True}}
+            {"$set": {
+                "verified": True, 
+                "is_verified": True,
+                "status": "approved"
+            }}
         )
+        
         if result.modified_count > 0:
-            log_action('verify', f'Hospital verified: {hospital_id}')
+            hospital = hospitals_collection.find_one({"_id": ObjectId(hospital_id)})
+            
+            # Generate login ID if not exists
+            if not hospital.get("login_id"):
+                login_id = generate_unique_id("HSP", hospitals_collection)
+                hospitals_collection.update_one(
+                    {"_id": ObjectId(hospital_id)},
+                    {"$set": {"login_id": login_id}}
+                )
+                
+                # Send welcome email
+                send_welcome_email(
+                    hospital["email"],
+                    hospital.get("hospital_name", hospital.get("fullname")),
+                    "hospital",
+                    login_id
+                )
+            
+            log_action('verify', f'Hospital verified via API: {hospital_id}')
             return jsonify({"message": "Hospital verified successfully"}), 200
+        
         return jsonify({"error": "Hospital not found"}), 404
     except Exception as e:
+        logger.error(f"Error verifying hospital: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/delete-user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
+    """Delete a user (admin only)"""
+    session_data, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
     try:
-        # Try to delete from donors first
+        # Try donors first
         result = donors_collection.delete_one({"_id": ObjectId(user_id)})
         if result.deleted_count == 0:
-            result = hospital_collection.delete_one({"_id": ObjectId(user_id)})
+            result = hospitals_collection.delete_one({"_id": ObjectId(user_id)})
         
         if result.deleted_count > 0:
             log_action('delete', f'User deleted: {user_id}')
             return jsonify({"message": "User deleted successfully"}), 200
+        
         return jsonify({"error": "User not found"}), 404
     except Exception as e:
+        logger.error(f"Error deleting user: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/hospital/<hospital_id>', methods=['GET'])
 def get_hospital_data(hospital_id):
+    """Get hospital data by ID"""
+    session_data, error = get_session(required_roles=["hospital", "admin"])
+    if error and not session_data:
+        return error
+
     try:
-        hospital = hospital_collection.find_one({"hospital_id": hospital_id}, {'password': 0})
+        hospital = hospitals_collection.find_one(
+            {"hospital_id": hospital_id}, 
+            {'password': 0}
+        )
+        
+        if not hospital:
+            hospital = hospitals_collection.find_one(
+                {"_id": ObjectId(hospital_id) if ObjectId.is_valid(hospital_id) else None},
+                {'password': 0}
+            )
+        
         if not hospital:
             return jsonify({"error": "Hospital not found"}), 404
         
-        # Get hospital inventory
-        inventory = inventory_collection.find_one({"hospital_id": hospital_id})
+        hospital['_id'] = str(hospital['_id'])
         
-        # Get pending requests for this hospital
-        requests = list(requests_collection.find({"hospital_id": hospital_id}))
+        # Get inventory
+        inventory = inventory_collection.find_one({"hospital_id": str(hospital['_id'])})
         
-        # Get donors in the same city
+        # Get requests
+        requests = list(requests_collection.find({"hospital_id": str(hospital['_id'])}))
+        for req in requests:
+            req['_id'] = str(req['_id'])
+        
+        # Get donors in same city
         donors = list(donors_collection.find({
             "city": hospital.get('city'),
-            "available": True
-        }, {'password': 0, 'aadhar': 0}))
+            "available": True,
+            "status": "approved"
+        }, {'password': 0, 'aadhar': 0}).limit(50))
+        
+        for donor in donors:
+            donor['_id'] = str(donor['_id'])
         
         return jsonify({
             "hospital": hospital,
@@ -928,25 +1344,43 @@ def get_hospital_data(hospital_id):
             "donors": donors
         }), 200
     except Exception as e:
+        logger.error(f"Error getting hospital data: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/system-logs', methods=['GET'])
 def get_system_logs():
+    """Get system logs (admin only)"""
+    session_data, error = get_session(required_roles=["admin"])
+    if error:
+        return error
+
     try:
-        logs = list(logs_collection.find().sort('timestamp', -1).limit(50))
+        logs = list(logs_collection.find().sort('timestamp', -1).limit(100))
+        for log in logs:
+            log['_id'] = str(log['_id'])
+            if isinstance(log.get('timestamp'), datetime):
+                log['timestamp'] = log['timestamp'].isoformat()
+        
         return jsonify(logs), 200
     except Exception as e:
+        logger.error(f"Error getting logs: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/request-blood', methods=['POST'])
-def request_blood():
+def request_blood_api():
+    """Create a blood request"""
+    session_data, error = get_session(required_roles=["hospital"])
+    if error:
+        return error
+
     try:
         data = request.json
         data['status'] = 'pending'
         data['created_at'] = datetime.utcnow()
         data['donation_type'] = 'blood'
+        
+        if 'hospital_id' not in data and session_data:
+            data['hospital_id'] = session_data['user_id']
         
         result = requests_collection.insert_one(data)
         
@@ -957,88 +1391,149 @@ def request_blood():
             "request_id": str(result.inserted_id)
         }), 201
     except Exception as e:
+        logger.error(f"Error creating blood request: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/approve-request', methods=['POST'])
 def approve_request():
+    """Approve a donation request"""
+    session_data, error = get_session(required_roles=["hospital", "admin"])
+    if error:
+        return error
+
     try:
         data = request.json
         request_id = data.get('request_id')
         
+        if not request_id:
+            return jsonify({"error": "Request ID required"}), 400
+        
         result = requests_collection.update_one(
             {"_id": ObjectId(request_id)},
-            {"$set": {"status": "approved", "approved_at": datetime.utcnow()}}
+            {"$set": {
+                "status": "approved", 
+                "approved_at": datetime.utcnow()
+            }}
         )
         
         if result.modified_count > 0:
             # Add to donations
             request_data = requests_collection.find_one({"_id": ObjectId(request_id)})
-            donations_collection.insert_one({
-                'request_id': request_id,
-                'donor_name': request_data.get('donor_name', 'Unknown'),
-                'donation_type': request_data.get('donation_type', 'blood'),
-                'donation_date': datetime.utcnow(),
-                'status': 'completed'
-            })
+            if request_data:
+                donation_data = {
+                    'request_id': request_id,
+                    'hospital_id': request_data.get('hospital_id'),
+                    'donor_name': request_data.get('donor_name', 'Unknown'),
+                    'donation_type': request_data.get('donation_type', 'blood'),
+                    'donation_date': datetime.utcnow(),
+                    'status': 'completed'
+                }
+                donations_collection.insert_one(donation_data)
             
             log_action('approve', f'Request approved: {request_id}')
             return jsonify({"message": "Request approved"}), 200
+        
         return jsonify({"error": "Request not found"}), 404
     except Exception as e:
+        logger.error(f"Error approving request: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/update-inventory', methods=['POST'])
 def update_inventory():
+    """Update hospital blood inventory"""
+    session_data, error = get_session(required_roles=["hospital"])
+    if error:
+        return error
+
     try:
         data = request.json
-        hospital_id = data.get('hospital_id')
+        hospital_id = data.get('hospital_id', session_data['user_id'])
         inventory = data.get('inventory')
+        
+        if not inventory:
+            return jsonify({"error": "Inventory data required"}), 400
         
         result = inventory_collection.update_one(
             {"hospital_id": hospital_id},
             {"$set": {
                 "blood_inventory": inventory,
                 "last_updated": datetime.utcnow()
-            }}
+            }},
+            upsert=True
         )
         
         log_action('inventory', f'Inventory updated for hospital: {hospital_id}')
         
         return jsonify({"message": "Inventory updated successfully"}), 200
     except Exception as e:
+        logger.error(f"Error updating inventory: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/recent-donations', methods=['GET'])
 def get_recent_donations():
+    """Get recent donations"""
     try:
-        donations = list(donations_collection.find().sort('donation_date', -1).limit(10))
+        donations = list(donations_collection.find().sort('donation_date', -1).limit(20))
+        for donation in donations:
+            donation['_id'] = str(donation['_id'])
+            if isinstance(donation.get('donation_date'), datetime):
+                donation['donation_date'] = donation['donation_date'].isoformat()
+        
         return jsonify(donations), 200
     except Exception as e:
+        logger.error(f"Error getting recent donations: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "time": datetime.utcnow().isoformat()}), 200
+    """Health check endpoint"""
+    return jsonify({
+        "status": "ok",
+        "time": datetime.utcnow().isoformat(),
+        "database": "connected" if client else "disconnected"
+    }), 200
 
+# -------------------- Error Handlers --------------------
+@app.errorhandler(404)
+def not_found_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Endpoint not found"}), 404
+    return render_template('index.html')
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Internal server error: {error}")
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Internal server error"}), 500
+    return render_template('index.html')
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", "5000"))
     debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
-    print(f"Starting Python Flask Server on port {port}...")
-    print("Creating indexes...")
-
+    print("=" * 50)
+    print(f"Starting LifeLink Server on port {port}")
+    print("=" * 50)
+    
     # Create indexes for better performance
-    donors_collection.create_index("email", unique=True)
-    donors_collection.create_index("phone", unique=True)
-    donors_collection.create_index("aadhar", unique=True)
-    hospital_collection.create_index("email", unique=True)
-    hospital_collection.create_index("hospital_id", unique=True)
+    try:
+        donors_collection.create_index("email", unique=True)
+        donors_collection.create_index("phone", unique=True)
+        donors_collection.create_index("aadhar", unique=True, sparse=True)
+        donors_collection.create_index("login_id", unique=True, sparse=True)
+        
+        hospitals_collection.create_index("email", unique=True)
+        hospitals_collection.create_index("hospital_id", unique=True, sparse=True)
+        hospitals_collection.create_index("login_id", unique=True, sparse=True)
+        
+        sessions_collection.create_index("token", unique=True)
+        sessions_collection.create_index("expires_at", expireAfterSeconds=0)
+        
+        print("✓ Database indexes created")
+    except Exception as e:
+        print(f"⚠️ Index creation warning: {e}")
 
-    print("Server ready!")
-    print(f"Access the application at: http://localhost:{port}")
+    print(f"✓ Server ready at: http://localhost:{port}")
+    print("=" * 50)
+    
     app.run(host="0.0.0.0", debug=debug_mode, port=port)

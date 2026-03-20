@@ -114,6 +114,28 @@ function initRegister() {
   const donorFields = document.getElementById('donor-fields');
   const hospitalFields = document.getElementById('hospital-fields');
   const donorNameGroup = document.getElementById('donor-name-group');
+  const fullnameInput = document.getElementById('fullname');
+  const donorRequiredIds = ['gender', 'bloodGroup'];
+  const hospitalRequiredIds = ['hospital-name', 'license_number', 'address', 'certificate_pdf'];
+
+  function toggleRegistrationMode(role) {
+    if (donorFields) donorFields.style.display = role === 'donor' ? 'block' : 'none';
+    if (hospitalFields) hospitalFields.style.display = role === 'hospital' ? 'block' : 'none';
+    if (donorNameGroup) donorNameGroup.style.display = role === 'donor' ? 'block' : 'none';
+    if (fullnameInput) fullnameInput.required = role === 'donor';
+
+    donorRequiredIds.forEach((id) => {
+      const field = document.getElementById(id);
+      if (field) field.required = role === 'donor';
+    });
+
+    hospitalRequiredIds.forEach((id) => {
+      const field = document.getElementById(id);
+      if (field) field.required = role === 'hospital';
+    });
+  }
+
+  toggleRegistrationMode(roleInput.value || 'donor');
 
   tabBtns.forEach((btn) =>
     btn.addEventListener('click', () => {
@@ -121,13 +143,7 @@ function initRegister() {
       btn.classList.add('active');
       const role = btn.dataset.role;
       roleInput.value = role;
-      if (donorFields) donorFields.style.display = role === 'donor' ? 'block' : 'none';
-      if (hospitalFields) hospitalFields.style.display = role === 'hospital' ? 'block' : 'none';
-      if (donorNameGroup) {
-        donorNameGroup.style.display = role === 'donor' ? 'block' : 'none';
-        const fullnameInput = document.getElementById('fullname');
-        if (fullnameInput) fullnameInput.required = role === 'donor';
-      }
+      toggleRegistrationMode(role);
     })
   );
 

@@ -326,12 +326,13 @@ def register_user():
                 return jsonify({"error": "Only blood donors are allowed to register."}), 400
 
             aadhar = (data.get("aadhar") or "").strip()
+            gender = (data.get("gender") or "").strip().lower()
             weight = data.get("weight")
             dob = data.get("dob")
             blood_group = (data.get("blood_group") or "").strip().upper()
             last_donation_date = data.get("last_donation_date")
 
-            if not all([aadhar, weight, dob, blood_group]):
+            if not all([aadhar, gender, weight, dob, blood_group]):
                 return jsonify({"error": "Missing donor fields"}), 400
 
             # Validate weight
@@ -359,6 +360,7 @@ def register_user():
                 "status": "approved",  # Donors are auto-approved
                 "login_id": login_id,
                 "aadhar": aadhar,
+                "gender": gender,
                 "weight": weight_float,
                 "dob": dob,
                 "blood_group": blood_group,

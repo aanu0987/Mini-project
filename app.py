@@ -123,8 +123,8 @@ def send_email(recipient, subject, content):
         logger.error(f"Email error: {e}")
         return False
 
-def send_welcome_email(user_email, user_name, role, login_id=None):
-    """Send welcome email after registration"""
+def send_welcome_email(user_email, user_name, role, login_id=None, password=None):
+    """Send welcome email after registration or approval"""
     if role == 'donor':
         content = f"""
 Dear {user_name},
@@ -133,6 +133,7 @@ Thank you for registering as a Blood Donor on LifeLink!
 
 Your registration is now complete. Here are your login details:
 Login ID: {login_id}
+Password: {password}
 
 As a donor, you can:
 • Update your availability status
@@ -155,6 +156,7 @@ Welcome to LifeLink Hospital Network!
 
 Your hospital registration has been approved. Here are your login details:
 Login ID: {login_id}
+Password: {password}
 
 You can now:
 • Post blood and organ requirements
@@ -170,6 +172,25 @@ LifeLink Team
 """
     
     return send_email(user_email, f'Welcome to LifeLink - Registration Successful!', content)
+
+
+def send_hospital_pending_email(user_email, user_name):
+    """Send hospital registration pending verification email"""
+    content = f"""
+Dear {user_name},
+
+Thank you for registering with LifeLink Hospital Network.
+
+Your registration is complete and is now pending admin verification.
+Please wait while the admin verifies your account details.
+
+You will receive another email with your login ID and password immediately after your account is approved.
+
+Regards,
+LifeLink Team
+"""
+
+    return send_email(user_email, 'LifeLink Hospital Registration Submitted', content)
 
 def log_action(action_type, description, user_id=None):
     """Log system actions"""
@@ -236,6 +257,7 @@ def serialize_user(user):
     user = dict(user)
     user["_id"] = str(user["_id"])
     user.pop("password", None)
+    user.pop("pending_password", None)
     return user
 
 def create_notification(event_type, message, **extra):
@@ -332,7 +354,7 @@ def register_user():
             result = donors_collection.insert_one(donor_data)
             
             # Send welcome email
-            send_welcome_email(email, fullname, "donor", login_id)
+            send_welcome_email(email, fullname, "donor", login_id, password)
             
             # Create notification
             create_notification(
@@ -387,6 +409,7 @@ def register_user():
                 "phone": phone,
                 "email": email,
                 "password": generate_password_hash(password),
+                "pending_password": password,
                 "role": role,
                 "city": city,
                 "address": address,
@@ -402,23 +425,7 @@ def register_user():
             result = hospitals_collection.insert_one(hospital_data)
             
             # Send confirmation email
-            send_email(
-                email,
-                "LifeLink Hospital Registration Submitted",
-                f"""
-Dear {fullname},
-
-Thank you for registering with LifeLink Hospital Network.
-
-Your registration has been submitted and is pending admin verification. 
-You will receive an email with your login credentials once your account is approved.
-
-This usually takes 24-48 hours.
-
-Regards,
-LifeLink Team
-                """
-            )
+            send_hospital_pending_email(email, fullname)
             
             # Notify admin
             create_notification(
@@ -645,7 +652,11 @@ def verify_user():
         if action == "approve":
             # Generate login ID for hospital
             login_id = generate_unique_id("HSP", hospitals_collection)
-            
+            approval_password = hospital.get("pending_password")
+
+            if not approval_password:
+                approval_password = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+
             # Update hospital status
             hospitals_collection.update_one(
                 {"_id": object_id},
@@ -655,16 +666,18 @@ def verify_user():
                     "verified": True,
                     "is_verified": True,
                     "rejection_reason": None,
-                    "verified_at": datetime.utcnow()
-                }}
+                    "verified_at": datetime.utcnow(),
+                    "password": generate_password_hash(approval_password)
+                }, "$unset": {"pending_password": ""}}
             )
             
-            # Send approval email with login ID
+            # Send approval email with login ID and password
             send_welcome_email(
                 hospital["email"],
                 hospital.get("hospital_name", hospital.get("fullname")),
                 "hospital",
-                login_id
+                login_id,
+                approval_password
             )
             
             # Create notification
@@ -692,7 +705,7 @@ def verify_user():
                     "status": "rejected",
                     "rejection_reason": rejection_reason,
                     "verified_at": datetime.utcnow()
-                }}
+                }, "$unset": {"pending_password": ""}}
             )
             
             # Send rejection email
@@ -1190,8 +1203,8 @@ def get_users():
         return error
 
     try:
-        donors = list(donors_collection.find({}, {'password': 0}))
-        hospitals = list(hospitals_collection.find({}, {'password': 0}))
+        donors = list(donors_collection.find({}, {'password': 0, 'pending_password': 0}))
+        hospitals = list(hospitals_collection.find({}, {'password': 0, 'pending_password': 0}))
         
         # Add type field
         for donor in donors:
@@ -1218,7 +1231,7 @@ def get_pending_hospitals():
     try:
         pending = list(hospitals_collection.find(
             {"status": "pending"}, 
-            {'password': 0}
+            {'password': 0, 'pending_password': 0}
         ))
         
         for hospital in pending:
@@ -1237,36 +1250,49 @@ def verify_hospital_api(hospital_id):
         return error
 
     try:
+        hospital = hospitals_collection.find_one({"_id": ObjectId(hospital_id)})
+        if not hospital:
+            return jsonify({"error": "Hospital not found"}), 404
+
+        approval_password = hospital.get("pending_password")
+        update_fields = {
+            "verified": True,
+            "is_verified": True,
+            "status": "approved"
+        }
+
+        if not approval_password:
+            approval_password = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+            update_fields["password"] = generate_password_hash(approval_password)
+
         result = hospitals_collection.update_one(
             {"_id": ObjectId(hospital_id)},
-            {"$set": {
-                "verified": True, 
-                "is_verified": True,
-                "status": "approved"
-            }}
+            {"$set": update_fields, "$unset": {"pending_password": ""}}
         )
         
         if result.modified_count > 0:
-            hospital = hospitals_collection.find_one({"_id": ObjectId(hospital_id)})
-            
+            refreshed_hospital = hospitals_collection.find_one({"_id": ObjectId(hospital_id)})
+            login_id = refreshed_hospital.get("login_id")
+
             # Generate login ID if not exists
-            if not hospital.get("login_id"):
+            if not login_id:
                 login_id = generate_unique_id("HSP", hospitals_collection)
                 hospitals_collection.update_one(
                     {"_id": ObjectId(hospital_id)},
                     {"$set": {"login_id": login_id}}
                 )
-                
-                # Send welcome email
-                send_welcome_email(
-                    hospital["email"],
-                    hospital.get("hospital_name", hospital.get("fullname")),
-                    "hospital",
-                    login_id
-                )
+
+            # Send welcome email
+            send_welcome_email(
+                refreshed_hospital["email"],
+                refreshed_hospital.get("hospital_name", refreshed_hospital.get("fullname")),
+                "hospital",
+                login_id,
+                approval_password
+            )
             
             log_action('verify', f'Hospital verified via API: {hospital_id}')
-            return jsonify({"message": "Hospital verified successfully"}), 200
+            return jsonify({"message": "Hospital verified successfully", "login_id": login_id}), 200
         
         return jsonify({"error": "Hospital not found"}), 404
     except Exception as e:
@@ -1305,13 +1331,13 @@ def get_hospital_data(hospital_id):
     try:
         hospital = hospitals_collection.find_one(
             {"hospital_id": hospital_id}, 
-            {'password': 0}
+            {'password': 0, 'pending_password': 0}
         )
         
         if not hospital:
             hospital = hospitals_collection.find_one(
                 {"_id": ObjectId(hospital_id) if ObjectId.is_valid(hospital_id) else None},
-                {'password': 0}
+                {'password': 0, 'pending_password': 0}
             )
         
         if not hospital:

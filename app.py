@@ -36,7 +36,7 @@ CORS(app, supports_credentials=True)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("MONGO_DB", "lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "")  # Set this in production
+APP_PASSWORD = os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")  # Set this in production
 
 # MongoDB Connection
 try:

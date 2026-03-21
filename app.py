@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.message import EmailMessage
+from dotenv import load_dotenv
 import random
 import string
 import json
@@ -15,6 +16,8 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 TAMILNADU_DISTRICTS = [
     "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri",
@@ -36,7 +39,10 @@ CORS(app, supports_credentials=True)
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("MONGO_DB", "lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")  # Set this in production
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+APP_PASSWORD = "".join((os.getenv("APP_PASSWORD", "")).split())
+EMAIL_NOTIFICATIONS_ENABLED = bool(SENDER_EMAIL and APP_PASSWORD)
 
 # MongoDB Connection
 try:
@@ -103,8 +109,15 @@ app.json_encoder = JSONEncoder
 # -------------------- Utility Functions --------------------
 def send_email(recipient, subject, content):
     """Send email notification"""
-    if not APP_PASSWORD:
-        logger.info(f"Email disabled. Would send to {recipient}: {subject}")
+    recipient = (recipient or "").strip()
+    if not recipient:
+        logger.warning("Email skipped because recipient address was empty.")
+        return False
+
+    if not EMAIL_NOTIFICATIONS_ENABLED:
+        logger.warning(
+            "Email notifications are disabled. Set SENDER_EMAIL and APP_PASSWORD to enable SMTP delivery."
+        )
         return False
 
     msg = EmailMessage()
@@ -114,13 +127,18 @@ def send_email(recipient, subject, content):
     msg.set_content(content)
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
             smtp.login(SENDER_EMAIL, APP_PASSWORD)
             smtp.send_message(msg)
         logger.info(f"Email sent to {recipient}")
         return True
+    except smtplib.SMTPAuthenticationError:
+        logger.error(
+            "Email authentication failed. Check SENDER_EMAIL / APP_PASSWORD configuration and ensure the app password is valid."
+        )
+        return False
     except Exception as e:
-        logger.error(f"Email error: {e}")
+        logger.error(f"Email error while sending to {recipient}: {e}")
         return False
 
 def send_welcome_email(user_email, user_name, role, login_id=None, password=None):

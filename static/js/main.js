@@ -115,7 +115,7 @@ function initRegister() {
   const hospitalFields = document.getElementById('hospital-fields');
   const donorNameGroup = document.getElementById('donor-name-group');
   const fullnameInput = document.getElementById('fullname');
-  const donorRequiredIds = ['gender', 'bloodGroup'];
+  const donorRequiredIds = ['gender', 'aadhar', 'weight', 'dob', 'bloodGroup'];
   const hospitalRequiredIds = ['hospital-name', 'license_number', 'address', 'certificate_pdf'];
 
   function toggleRegistrationMode(role) {
@@ -155,13 +155,14 @@ function initRegister() {
     if (role === 'donor') {
       const payload = {
         role,
-        fullname: document.getElementById('fullname')?.value || '',
-        phone: document.getElementById('phone')?.value,
-        email: document.getElementById('email')?.value,
+        fullname: document.getElementById('fullname')?.value?.trim() || '',
+        phone: document.getElementById('phone')?.value?.trim(),
+        email: document.getElementById('email')?.value?.trim(),
         password: document.getElementById('password')?.value,
         city: document.getElementById('city')?.value,
         donor_type: 'blood',
-        aadhar: document.getElementById('aadhar')?.value,
+        gender: document.getElementById('gender')?.value,
+        aadhar: document.getElementById('aadhar')?.value?.trim(),
         weight: document.getElementById('weight')?.value,
         dob: document.getElementById('dob')?.value,
         blood_group: document.getElementById('bloodGroup')?.value,
@@ -176,13 +177,13 @@ function initRegister() {
     } else {
       const formData = new FormData();
       formData.append('role', role);
-      formData.append('fullname', document.getElementById('hospital-name')?.value || '');
-      formData.append('phone', document.getElementById('phone')?.value || '');
-      formData.append('email', document.getElementById('email')?.value || '');
+      formData.append('fullname', document.getElementById('hospital-name')?.value?.trim() || '');
+      formData.append('phone', document.getElementById('phone')?.value?.trim() || '');
+      formData.append('email', document.getElementById('email')?.value?.trim() || '');
       formData.append('password', document.getElementById('password')?.value || '');
       formData.append('city', document.getElementById('city')?.value || '');
-      formData.append('license_number', document.getElementById('license_number')?.value || '');
-      formData.append('address', document.getElementById('address')?.value || '');
+      formData.append('license_number', document.getElementById('license_number')?.value?.trim() || '');
+      formData.append('address', document.getElementById('address')?.value?.trim() || '');
 
       const fileInput = document.getElementById('certificate_pdf');
       if (fileInput?.files?.[0]) {

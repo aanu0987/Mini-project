@@ -1258,13 +1258,25 @@ def update_donor_profile():
             return jsonify({"error": "Donor not found"}), 404
 
         data = request.get_json() or {}
-        allowed_fields = ["fullname", "phone", "weight", "last_donation_date", "dob", "blood_group", "available"]
+        allowed_fields = [
+            "fullname",
+            "phone",
+            "weight",
+            "last_donation_date",
+            "dob",
+            "blood_group",
+            "available",
+            "address",
+            "city"
+        ]
         update_payload = {}
 
         for field in allowed_fields:
             if field in data and data[field] is not None:
                 if field == "blood_group" and isinstance(data[field], str):
                     update_payload[field] = data[field].strip().upper()
+                elif field in ["fullname", "phone", "address", "city"] and isinstance(data[field], str):
+                    update_payload[field] = data[field].strip()
                 else:
                     update_payload[field] = data[field]
 
@@ -1280,6 +1292,18 @@ def update_donor_profile():
                 update_payload["weight"] = new_weight
             except (TypeError, ValueError):
                 return jsonify({"error": "Weight must be a valid number"}), 400
+
+        if "city" in update_payload:
+            if not update_payload["city"]:
+                return jsonify({"error": "City cannot be empty"}), 400
+            if update_payload["city"] not in TAMILNADU_DISTRICTS:
+                return jsonify({"error": "City must be a valid Tamil Nadu district"}), 400
+
+        if "phone" in update_payload and not update_payload["phone"]:
+            return jsonify({"error": "Phone number cannot be empty"}), 400
+
+        if "address" in update_payload and not update_payload["address"]:
+            return jsonify({"error": "Address cannot be empty"}), 400
 
         donors_collection.update_one(
             {"_id": donor["_id"]},

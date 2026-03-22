@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, session, render_template, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
+from pymongo.errors import ConfigurationError
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.message import EmailMessage
@@ -37,8 +38,16 @@ app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here-change-in-product
 CORS(app, supports_credentials=True)
 
 # -------------------- Configuration --------------------
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-DB_NAME = os.getenv("MONGO_DB", "lifelink")
+def get_env_value(*keys, default=None):
+    """Return the first non-empty environment variable from the provided keys."""
+    for key in keys:
+        value = os.getenv(key)
+        if value:
+            return value
+    return default
+
+MONGO_URI = get_env_value("MONGO_URI", "MONGODB_URI", "MONGO_URL", "DATABASE_URL", default="mongodb://localhost:27017/")
+DB_NAME = get_env_value("MONGO_DB", "MONGODB_DB", "DB_NAME")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
@@ -170,16 +179,51 @@ class InMemoryDatabase:
 DB_CONNECTED = False
 client = None
 
+
+def get_database(client):
+    """Resolve the MongoDB database from explicit env vars or the URI default database."""
+    if DB_NAME:
+        return client[DB_NAME]
+
+    try:
+        return client.get_default_database()
+    except ConfigurationError:
+        return client["lifelink"]
+
 # MongoDB Connection
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=1000)
+    client = MongoClient(
+        MONGO_URI,
+        serverSelectionTimeoutMS=int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
+    )
     client.admin.command("ping")
-    db = client[DB_NAME]
+    db = get_database(client)
     DB_CONNECTED = True
-    logger.info(f"Connected to MongoDB: {DB_NAME}")
+    logger.info(f"Connected to MongoDB database: {db.name}")
 except Exception as e:
     logger.warning(f"MongoDB unavailable, using in-memory storage fallback: {e}")
     db = InMemoryDatabase()
+
+def initialize_indexes():
+    """Create indexes for MongoDB collections when a real database is available."""
+    if not DB_CONNECTED:
+        return
+
+    try:
+        donors_collection.create_index("email", unique=True)
+        donors_collection.create_index("phone", unique=True)
+        donors_collection.create_index("aadhar", unique=True, sparse=True)
+        donors_collection.create_index("login_id", unique=True, sparse=True)
+
+        hospitals_collection.create_index("email", unique=True)
+        hospitals_collection.create_index("hospital_id", unique=True, sparse=True)
+        hospitals_collection.create_index("login_id", unique=True, sparse=True)
+
+        sessions_collection.create_index("token", unique=True)
+        sessions_collection.create_index("expires_at", expireAfterSeconds=0)
+        logger.info("Database indexes ensured successfully")
+    except Exception as e:
+        logger.warning(f"Index creation warning: {e}")
 
 # Collections
 donors_collection = db['donors']
@@ -192,6 +236,7 @@ donations_collection = db['donations']
 admins_collection = db['admins']
 notifications_collection = db['notifications']
 sessions_collection = db['sessions']
+initialize_indexes()
 
 # -------------------- Frontend Routes --------------------
 @app.route('/')
@@ -1731,23 +1776,7 @@ if __name__ == '__main__':
     print(f"Starting LifeLink Server on port {port}")
     print("=" * 50)
     
-    # Create indexes for better performance
-    try:
-        donors_collection.create_index("email", unique=True)
-        donors_collection.create_index("phone", unique=True)
-        donors_collection.create_index("aadhar", unique=True, sparse=True)
-        donors_collection.create_index("login_id", unique=True, sparse=True)
-        
-        hospitals_collection.create_index("email", unique=True)
-        hospitals_collection.create_index("hospital_id", unique=True, sparse=True)
-        hospitals_collection.create_index("login_id", unique=True, sparse=True)
-        
-        sessions_collection.create_index("token", unique=True)
-        sessions_collection.create_index("expires_at", expireAfterSeconds=0)
-        
-        print("✓ Database indexes created")
-    except Exception as e:
-        print(f"⚠️ Index creation warning: {e}")
+    initialize_indexes()
 
     print(f"✓ Server ready at: http://localhost:{port}")
     print("=" * 50)

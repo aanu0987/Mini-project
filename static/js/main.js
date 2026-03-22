@@ -1,5 +1,5 @@
 const API_BASE = window.location.origin;
-const AUTH_REQUIRED_MESSAGE = 'Please login to access Find Donors and Dashboard.';
+const AUTH_REQUIRED_MESSAGE = 'Please login to access Hospitals and Dashboard.';
 
 function getToken() {
   return localStorage.getItem('token');
@@ -253,7 +253,7 @@ function initLogin() {
 
     if (role === 'admin') window.location.href = '/admin';
     if (role === 'hospital') window.location.href = '/hospital_dashboard';
-    if (role === 'donor') window.location.href = '/donor_dashboard';
+    if (role === 'donor') window.location.href = '/dashboard';
   });
 }
 
@@ -405,30 +405,22 @@ window.verifyUser = async function (user_type, user_id, action, rejection_reason
 };
 
 async function initHospitalDashboard() {
-  const details = document.getElementById('hospital-details');
-  if (!details) return;
+  const hospitalForm = document.getElementById('hospital-edit-form');
+  if (!hospitalForm) return;
 
   try {
     const res = await fetch(`${API_BASE}/hospital/dashboard`, { headers: authHeaders() });
     const data = await res.json();
     
     if (!res.ok) {
-      details.innerHTML = `<p class="alert alert-danger">${data.error || 'Unauthorized'}</p>`;
+      const notificationsEl = document.getElementById('hospital-notifications');
+      if (notificationsEl) {
+        notificationsEl.innerHTML = `<p class="alert alert-danger">${data.error || 'Unauthorized'}</p>`;
+      }
       return;
     }
 
     const hospital = data.hospital;
-    details.innerHTML = `
-      <div style="display: grid; gap: 10px;">
-        <p><strong>Hospital Name:</strong> ${hospital.hospital_name || hospital.fullname}</p>
-        <p><strong>Email:</strong> ${hospital.email}</p>
-        <p><strong>Phone:</strong> ${hospital.phone}</p>
-        <p><strong>Address:</strong> ${hospital.address || 'Not provided'}</p>
-        <p><strong>City:</strong> ${hospital.city || 'Not provided'}</p>
-        <p><strong>Login ID:</strong> ${hospital.login_id}</p>
-        <p><strong>Status:</strong> <span class="badge ${hospital.is_verified ? 'badge-success' : 'badge-warning'}">${hospital.is_verified ? 'Verified' : 'Pending Verification'}</span></p>
-      </div>
-    `;
 
     // Pre-fill edit form
     document.getElementById('edit-hospital-name').value = hospital.hospital_name || hospital.fullname || '';
@@ -486,7 +478,10 @@ async function initHospitalDashboard() {
 
   } catch (error) {
     console.error('Error loading hospital dashboard:', error);
-    details.innerHTML = '<p class="alert alert-danger">Error loading dashboard.</p>';
+    const notificationsEl = document.getElementById('hospital-notifications');
+    if (notificationsEl) {
+      notificationsEl.innerHTML = '<p class="alert alert-danger">Error loading dashboard.</p>';
+    }
   }
 }
 
@@ -620,42 +615,47 @@ async function initDonorDashboard() {
 }
 
 async function initPublicDonorList() {
-  const bloodDonorsList = document.getElementById('blood-donors-list');
-  if (!bloodDonorsList) return;
+  const hospitalsList = document.getElementById('blood-donors-list');
+  if (!hospitalsList) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/donors`);
+    const res = await fetch(`${API_BASE}/api/hospitals`);
     const data = await res.json();
     
     if (!res.ok) {
-      bloodDonorsList.innerHTML = '<p class="alert alert-danger">Unable to load donors.</p>';
+      hospitalsList.innerHTML = '<p class="alert alert-danger">Unable to load hospitals.</p>';
       return;
     }
 
-    bloodDonorsList.innerHTML = data.length === 0
-      ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No approved blood donors found.</p>'
-      : data.map(d => `
+    hospitalsList.innerHTML = data.length === 0
+      ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No approved hospitals found.</p>'
+      : data.map(h => `
         <div class="donor-card">
           <div class="donor-header">
-            <div class="donor-name">${d.fullname}</div>
-            <div class="blood-group">${d.blood_group || 'N/A'}</div>
+            <div class="donor-name">${h.hospital_name || 'Unnamed Hospital'}</div>
+            <div class="blood-group">${h.city || 'N/A'}</div>
           </div>
           <div class="donor-details">
-            <div class="donor-detail-item"><span>📍</span> ${d.city || 'Location not specified'}</div>
-            <div class="donor-detail-item"><span>📞</span> ${d.phone || 'N/A'}</div>
-            <div class="donor-detail-item"><span>🩸</span> Last Donation: ${d.last_donation_date || 'Never'}</div>
+            <div class="donor-detail-item"><span>🏥</span> ${h.hospital_name || 'Unnamed Hospital'}</div>
+            <div class="donor-detail-item"><span>📞</span> ${h.phone || 'N/A'}</div>
+            <div class="donor-detail-item"><span>📍</span> ${h.address || 'Address not provided'}</div>
+            <div class="donor-detail-item"><span>🌆</span> ${h.city || 'City not provided'}</div>
           </div>
-          <a href="tel:${d.phone}" class="btn contact-btn">Contact Donor</a>
+          <a href="tel:${h.phone || ''}" class="btn contact-btn">Contact Hospital</a>
         </div>
       `).join('');
 
-    const organ = document.getElementById('organ-donors-list');
-    if (organ) {
-      organ.innerHTML = '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">Only blood donor registration is enabled.</p>';
+    const searchInput = document.getElementById('districtSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        const term = searchInput.value.trim().toLowerCase();
+        document.querySelectorAll('#blood-donors-list .donor-card').forEach((card) => {
+          card.style.display = card.textContent.toLowerCase().includes(term) ? '' : 'none';
+        });
+      });
     }
-
   } catch (error) {
-    console.error('Error fetching donors:', error);
-    bloodDonorsList.innerHTML = '<p class="alert alert-danger">Failed to load donors. Make sure the backend is running.</p>';
+    console.error('Error fetching hospitals:', error);
+    hospitalsList.innerHTML = '<p class="alert alert-danger">Failed to load hospitals. Make sure the backend is running.</p>';
   }
 }

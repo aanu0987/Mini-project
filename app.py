@@ -41,7 +41,7 @@ DB_NAME = os.getenv("MONGO_DB", "lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
-APP_PASSWORD = "".join((os.getenv("APP_PASSWORD", "")).split())
+APP_PASSWORD = "".join((os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")).split())
 EMAIL_NOTIFICATIONS_ENABLED = bool(SENDER_EMAIL and APP_PASSWORD)
 
 # MongoDB Connection

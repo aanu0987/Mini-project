@@ -1322,6 +1322,24 @@ def list_donors():
         logger.error(f"Error listing donors: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/hospitals", methods=["GET"])
+def list_hospitals():
+    """Public list of approved hospitals"""
+    try:
+        hospitals = []
+        for hospital in hospitals_collection.find({"status": "approved"}).limit(100):
+            hospitals.append({
+                "hospital_name": hospital.get("hospital_name") or hospital.get("fullname"),
+                "phone": hospital.get("phone"),
+                "address": hospital.get("address"),
+                "city": hospital.get("city")
+            })
+
+        return jsonify(hospitals), 200
+    except Exception as e:
+        logger.error(f"Error listing hospitals: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     """Get system statistics"""

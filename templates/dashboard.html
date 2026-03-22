@@ -19,7 +19,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="/">Home</a></li>
-            <li><a href="/blood_donors">Find Donors</a></li>
+            <li><a href="/blood_donors">Hospitals</a></li>
             <li><a href="/dashboard" id="dashboard-link" class="active">Dashboard</a></li>
             <li><a href="/about_us">About Us</a></li>
         </ul>
@@ -147,7 +147,7 @@
             const role = localStorage.getItem('role');
             
             if (!userStr) {
-                alert('Please login to access Find Donors and Dashboard.');
+                alert('Please login to access Hospitals and Dashboard.');
                 window.location.href = '/login';
                 return;
             }
@@ -535,50 +535,56 @@
             const container = document.getElementById('dashboard-container');
             
             try {
-                const response = await fetch('http://localhost:5000/api/recent-donations');
-                const donations = await response.json();
-                
+                const response = await fetch('/donor/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                    }
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    container.innerHTML = `<div class="alert alert-danger" style="text-align: center;">${data.error || 'Unauthorized'}</div>`;
+                    return;
+                }
+
+                const donor = data.donor || user;
+                const notifications = data.hospital_notifications || [];
+                const hospitals = data.hospital_contacts || [];
+
                 container.innerHTML = `
                     <div class="dashboard-header">
-                        <h1>Welcome, ${user.fullname}!</h1>
-                        <p>Your donor dashboard - track your donations and help save lives.</p>
+                        <h1>Blood Donor Dashboard</h1>
+                        <p>Welcome back, ${donor.fullname || 'Donor'}. Track your donations and stay ready to save lives.</p>
                     </div>
                     
                     <div class="stats-grid">
                         <div class="stat-card dashboard-stat blood">
-                            <div class="stat-value">${donations.filter(d => d.donation_type === 'blood').length}</div>
-                            <div class="stat-label">Blood Donations</div>
-                        </div>
-                        <div class="stat-card dashboard-stat organ">
-                            <div class="stat-value">${donations.filter(d => d.donation_type === 'organ').length}</div>
-                            <div class="stat-label">Organ Donations</div>
+                            <div class="stat-value">${data.total_donations || 0}</div>
+                            <div class="stat-label">Total Donations</div>
                         </div>
                         <div class="stat-card dashboard-stat">
-                            <div class="stat-value">${new Date().getFullYear() - new Date(user.dob).getFullYear() || 25}</div>
+                            <div class="stat-value">${data.age || '-'}</div>
                             <div class="stat-label">Age</div>
                         </div>
                         <div class="stat-card dashboard-stat">
-                            <div class="stat-value">${user.weight || 70}</div>
+                            <div class="stat-value">${donor.weight || '-'}</div>
                             <div class="stat-label">Weight (kg)</div>
+                        </div>
+                        <div class="stat-card dashboard-stat">
+                            <div class="stat-value">${donor.blood_group || 'N/A'}</div>
+                            <div class="stat-label">Blood Group</div>
                         </div>
                     </div>
                     
                     <div class="row">
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Quick Actions</h3>
+                                <h3 class="card-title">Last Donation</h3>
                             </div>
                             <div class="card-body">
-                                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                    <button class="btn btn-primary" onclick="updateAvailability()">
-                                        <i class="fas fa-check-circle"></i> Update Availability
-                                    </button>
-                                    <button class="btn btn-success" onclick="window.location.href='blood_donors.html'">
-                                        <i class="fas fa-search"></i> Find Donation Centers
-                                    </button>
-                                    <button class="btn btn-info" onclick="viewDonationHistory()">
-                                        <i class="fas fa-history"></i> View Donation History
-                                    </button>
+                                <div class="text-center p-3">
+                                    <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Last Donation Date</p>
+                                    <p style="font-size: 1.5rem; color: var(--primary-color);">${data.last_donation_date || 'No record available'}</p>
                                 </div>
                             </div>
                         </div>
@@ -589,85 +595,44 @@
                             </div>
                             <div class="card-body">
                                 <div style="display: grid; gap: 1rem;">
-                                    <p><strong>Name:</strong> ${user.fullname}</p>
-                                    <p><strong>Email:</strong> ${user.email}</p>
-                                    <p><strong>Phone:</strong> ${user.phone}</p>
-                                    <p><strong>Blood Group:</strong> <span class="badge badge-danger">${user.blood_group || 'Unknown'}</span></p>
+                                    <p><strong>Name:</strong> ${donor.fullname || 'N/A'}</p>
+                                    <p><strong>Email:</strong> ${donor.email || 'N/A'}</p>
+                                    <p><strong>Phone:</strong> ${donor.phone || 'N/A'}</p>
+                                    <p><strong>City:</strong> ${donor.city || 'N/A'}</p>
                                     <p><strong>Status:</strong> <span class="badge badge-success">Active Donor</span></p>
                                 </div>
-                                <button class="btn btn-secondary btn-sm" style="margin-top: 1rem;" onclick="editProfile()">
-                                    Edit Profile
-                                </button>
                             </div>
                         </div>
                     </div>
                     
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Your Recent Donations</h3>
+                            <h3 class="card-title">Hospital Notifications</h3>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Type</th>
-                                            <th>Hospital</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${donations.map(d => `
-                                            <tr>
-                                                <td>${new Date(d.donation_date).toLocaleDateString()}</td>
-                                                <td><span class="badge ${d.donation_type === 'blood' ? 'badge-danger' : 'badge-success'}">${d.donation_type}</span></td>
-                                                <td>${d.hospital_name || 'City General Hospital'}</td>
-                                                <td><span class="badge badge-success">${d.status || 'Completed'}</span></td>
-                                            </tr>
-                                        `).join('')}
-                                        ${donations.length === 0 ? `
-                                            <tr>
-                                                <td colspan="4" style="text-align: center;">No donations yet. Be the first to donate!</td>
-                                            </tr>
-                                        ` : ''}
-                                    </tbody>
-                                </table>
-                            </div>
+                            ${notifications.length === 0 ? '<p class="text-muted">No hospital notifications yet.</p>' : notifications.map(n => `
+                                <div class="glass-panel" style="padding:12px; margin:8px 0;">
+                                    <b>${(n.type || 'Notification').toUpperCase()}</b><br>
+                                    ${n.message || ''}<br>
+                                    <small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
-                    
+
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Upcoming Donation Camps</h3>
+                            <h3 class="card-title">Hospitals</h3>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Camp Name</th>
-                                            <th>Location</th>
-                                            <th>Date</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>City Blood Drive</td>
-                                            <td>Central Hospital</td>
-                                            <td>${new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString()}</td>
-                                            <td><button class="btn btn-primary btn-sm">Register</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Community Donation Camp</td>
-                                            <td>Community Center</td>
-                                            <td>${new Date(Date.now() + 14*24*60*60*1000).toLocaleDateString()}</td>
-                                            <td><button class="btn btn-primary btn-sm">Register</button></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            ${hospitals.length === 0 ? '<p class="text-muted">No hospitals available.</p>' : hospitals.map(h => `
+                                <div class="glass-panel" style="padding:12px; margin:8px 0;">
+                                    <b>${h.hospital_name || 'Unnamed Hospital'}</b><br>
+                                    ${h.phone ? `📞 ${h.phone}<br>` : ''}
+                                    ${h.address ? `📍 ${h.address}<br>` : ''}
+                                    ${h.city ? `🌆 ${h.city}` : ''}
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                 `;

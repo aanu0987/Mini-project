@@ -9,6 +9,7 @@ import random
 import string
 import json
 from datetime import datetime, timedelta
+from copy import deepcopy
 import os
 import smtplib
 import logging
@@ -44,14 +45,141 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 APP_PASSWORD = "".join((os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")).split())
 EMAIL_NOTIFICATIONS_ENABLED = bool(SENDER_EMAIL and APP_PASSWORD)
 
+class InMemoryResult:
+    def __init__(self, inserted_id=None, modified_count=0, deleted_count=0):
+        self.inserted_id = inserted_id
+        self.modified_count = modified_count
+        self.deleted_count = deleted_count
+
+
+class InMemoryCursor:
+    def __init__(self, documents):
+        self.documents = documents
+
+    def sort(self, field, direction=1):
+        reverse = direction == -1
+        self.documents.sort(
+            key=lambda item: (item.get(field) is None, str(item.get(field)) if item.get(field) is not None else ""),
+            reverse=reverse
+        )
+        return self
+
+    def limit(self, count):
+        self.documents = self.documents[:count]
+        return self
+
+    def __iter__(self):
+        return iter(self.documents)
+
+
+class InMemoryCollection:
+    def __init__(self, name):
+        self.name = name
+        self.documents = []
+
+    def create_index(self, *args, **kwargs):
+        return None
+
+    def _matches(self, document, query):
+        if not query:
+            return True
+
+        for key, value in query.items():
+            doc_value = document.get(key)
+            if isinstance(value, dict):
+                if "$in" in value and doc_value not in value["$in"]:
+                    return False
+                if "$ne" in value and doc_value == value["$ne"]:
+                    return False
+            elif doc_value != value:
+                return False
+        return True
+
+    def _apply_projection(self, document, projection=None):
+        doc = deepcopy(document)
+        if not projection:
+            return doc
+
+        excluded = {key for key, value in projection.items() if value == 0}
+        if excluded:
+            for key in excluded:
+                doc.pop(key, None)
+        return doc
+
+    def find_one(self, query=None, projection=None):
+        for document in self.documents:
+            if self._matches(document, query or {}):
+                return self._apply_projection(document, projection)
+        return None
+
+    def find(self, query=None, projection=None):
+        matched = [
+            self._apply_projection(document, projection)
+            for document in self.documents
+            if self._matches(document, query or {})
+        ]
+        return InMemoryCursor(matched)
+
+    def insert_one(self, document):
+        stored = deepcopy(document)
+        stored.setdefault("_id", ObjectId())
+        self.documents.append(stored)
+        return InMemoryResult(inserted_id=stored["_id"])
+
+    def update_one(self, query, update, upsert=False):
+        for document in self.documents:
+            if self._matches(document, query):
+                original = deepcopy(document)
+                for key, value in update.get("$set", {}).items():
+                    document[key] = value
+                for key in update.get("$unset", {}).keys():
+                    document.pop(key, None)
+                modified = int(document != original)
+                return InMemoryResult(modified_count=modified)
+
+        if upsert:
+            new_document = deepcopy(query)
+            for key, value in update.get("$set", {}).items():
+                new_document[key] = value
+            result = self.insert_one(new_document)
+            return InMemoryResult(inserted_id=result.inserted_id, modified_count=1)
+
+        return InMemoryResult(modified_count=0)
+
+    def delete_one(self, query):
+        for index, document in enumerate(self.documents):
+            if self._matches(document, query):
+                del self.documents[index]
+                return InMemoryResult(deleted_count=1)
+        return InMemoryResult(deleted_count=0)
+
+    def count_documents(self, query):
+        return sum(1 for document in self.documents if self._matches(document, query))
+
+
+class InMemoryDatabase:
+    def __init__(self):
+        self.collections = {}
+
+    def __getitem__(self, name):
+        if name not in self.collections:
+            self.collections[name] = InMemoryCollection(name)
+        return self.collections[name]
+
+
+DB_CONNECTED = False
+client = None
+
 # MongoDB Connection
 try:
-    client = MongoClient(MONGO_URI)
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=1000)
+    client.admin.command("ping")
     db = client[DB_NAME]
+    DB_CONNECTED = True
     logger.info(f"Connected to MongoDB: {DB_NAME}")
 except Exception as e:
-    logger.error(f"MongoDB connection error: {e}")
-    raise
+    logger.warning(f"MongoDB unavailable, using in-memory storage fallback: {e}")
+    db = InMemoryDatabase()
 
 # Collections
 donors_collection = db['donors']
@@ -1536,7 +1664,7 @@ def health():
     return jsonify({
         "status": "ok",
         "time": datetime.utcnow().isoformat(),
-        "database": "connected" if client else "disconnected"
+        "database": "connected" if DB_CONNECTED else "in-memory fallback"
     }), 200
 
 # -------------------- Error Handlers --------------------

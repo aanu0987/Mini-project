@@ -531,7 +531,7 @@
             }
         }
         
-        async function loadDonorDashboard(user) {
+        async function loadDonorDashboard(user, profileMessage = '') {
             const container = document.getElementById('dashboard-container');
             
             try {
@@ -549,13 +549,25 @@
 
                 const donor = data.donor || user;
                 const notifications = data.hospital_notifications || [];
-                const hospitals = data.hospital_contacts || [];
+                const formatDisplayDate = (dateValue) => {
+                    if (!dateValue) return 'No record available';
+                    const parsedDate = new Date(dateValue);
+                    return Number.isNaN(parsedDate.getTime()) ? dateValue : parsedDate.toLocaleDateString();
+                };
+                const getInputDateValue = (dateValue) => {
+                    if (!dateValue) return '';
+                    const parsedDate = new Date(dateValue);
+                    if (Number.isNaN(parsedDate.getTime())) return dateValue;
+                    return parsedDate.toISOString().split('T')[0];
+                };
+                const profileAddress = donor.address || 'N/A';
 
                 container.innerHTML = `
                     <div class="dashboard-header">
                         <h1>Blood Donor Dashboard</h1>
                         <p>Welcome back, ${donor.fullname || 'Donor'}. Track your donations and stay ready to save lives.</p>
                     </div>
+                    ${profileMessage ? `<div class="alert alert-success">${profileMessage}</div>` : ''}
                     
                     <div class="stats-grid">
                         <div class="stat-card dashboard-stat blood">
@@ -584,7 +596,7 @@
                             <div class="card-body">
                                 <div class="text-center p-3">
                                     <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Last Donation Date</p>
-                                    <p style="font-size: 1.5rem; color: var(--primary-color);">${data.last_donation_date || 'No record available'}</p>
+                                    <p style="font-size: 1.5rem; color: var(--primary-color);">${formatDisplayDate(data.last_donation_date)}</p>
                                 </div>
                             </div>
                         </div>
@@ -598,7 +610,10 @@
                                     <p><strong>Name:</strong> ${donor.fullname || 'N/A'}</p>
                                     <p><strong>Email:</strong> ${donor.email || 'N/A'}</p>
                                     <p><strong>Phone:</strong> ${donor.phone || 'N/A'}</p>
+                                    <p><strong>Address:</strong> ${profileAddress}</p>
                                     <p><strong>City:</strong> ${donor.city || 'N/A'}</p>
+                                    <p><strong>Weight:</strong> ${donor.weight || 'N/A'} kg</p>
+                                    <p><strong>Last Donation:</strong> ${formatDisplayDate(data.last_donation_date)}</p>
                                     <p><strong>Status:</strong> <span class="badge badge-success">Active Donor</span></p>
                                 </div>
                             </div>
@@ -622,17 +637,35 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Hospitals</h3>
+                            <h3 class="card-title">Update Profile</h3>
                         </div>
                         <div class="card-body">
-                            ${hospitals.length === 0 ? '<p class="text-muted">No hospitals available.</p>' : hospitals.map(h => `
-                                <div class="glass-panel" style="padding:12px; margin:8px 0;">
-                                    <b>${h.hospital_name || 'Unnamed Hospital'}</b><br>
-                                    ${h.phone ? `📞 ${h.phone}<br>` : ''}
-                                    ${h.address ? `📍 ${h.address}<br>` : ''}
-                                    ${h.city ? `🌆 ${h.city}` : ''}
+                            <div id="donor-profile-alert"></div>
+                            <form id="donorProfileForm">
+                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="donor-phone">Phone Number</label>
+                                        <input id="donor-phone" type="tel" name="phone" class="form-control" value="${donor.phone || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="donor-last-donation">Last Donation Date</label>
+                                        <input id="donor-last-donation" type="date" name="last_donation_date" class="form-control" value="${getInputDateValue(data.last_donation_date)}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="donor-weight">Weight (kg)</label>
+                                        <input id="donor-weight" type="number" min="45" step="0.1" name="weight" class="form-control" value="${donor.weight || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="donor-city">City</label>
+                                        <input id="donor-city" type="text" name="city" class="form-control" value="${donor.city || ''}" required>
+                                    </div>
                                 </div>
-                            `).join('')}
+                                <div class="form-group">
+                                    <label for="donor-address">Address</label>
+                                    <textarea id="donor-address" name="address" class="form-control" rows="3" placeholder="Enter your address" required>${donor.address || ''}</textarea>
+                                </div>
+                                <button type="submit" class="btn">Save Profile Updates</button>
+                            </form>
                         </div>
                     </div>
                 `;
@@ -834,6 +867,63 @@
                 } catch (error) {
                     console.error('Error:', error);
                     alert('Error submitting request');
+                }
+            }
+
+            if (e.target.id === 'donorProfileForm') {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                const alertContainer = document.getElementById('donor-profile-alert');
+                const submitButton = e.target.querySelector('button[type="submit"]');
+
+                data.weight = data.weight ? Number(data.weight) : '';
+                if (!data.last_donation_date) {
+                    delete data.last_donation_date;
+                }
+
+                if (alertContainer) {
+                    alertContainer.innerHTML = '';
+                }
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Saving...';
+                }
+
+                try {
+                    const response = await fetch('http://localhost:5000/donor/profile', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Unable to update profile');
+                    }
+
+                    const updatedUser = {
+                        ...JSON.parse(localStorage.getItem('user') || '{}'),
+                        ...result.donor
+                    };
+                    localStorage.setItem('user', JSON.stringify(updatedUser));
+
+                    await loadDonorDashboard(updatedUser, result.message || 'Profile updated successfully.');
+                } catch (error) {
+                    console.error('Error updating donor profile:', error);
+                    if (alertContainer) {
+                        alertContainer.innerHTML = `<div class="alert alert-danger">${error.message || 'Error updating profile'}</div>`;
+                    }
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Save Profile Updates';
+                    }
                 }
             }
         });

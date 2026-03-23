@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, session, render_template, send_from_directory
 from flask_cors import CORS
 from pymongo import MongoClient
-from pymongo.errors import ConfigurationError
+from pymongo.errors import ConfigurationError, ServerSelectionTimeoutError
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 from email.message import EmailMessage
@@ -54,189 +54,212 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 APP_PASSWORD = "".join((os.getenv("APP_PASSWORD", "ucji znxr sfto ejsa")).split())
 EMAIL_NOTIFICATIONS_ENABLED = bool(SENDER_EMAIL and APP_PASSWORD)
 
-class InMemoryResult:
-    def __init__(self, inserted_id=None, modified_count=0, deleted_count=0):
-        self.inserted_id = inserted_id
-        self.modified_count = modified_count
-        self.deleted_count = deleted_count
-
-
-class InMemoryCursor:
-    def __init__(self, documents):
-        self.documents = documents
-
-    def sort(self, field, direction=1):
-        reverse = direction == -1
-        self.documents.sort(
-            key=lambda item: (item.get(field) is None, str(item.get(field)) if item.get(field) is not None else ""),
-            reverse=reverse
-        )
-        return self
-
-    def limit(self, count):
-        self.documents = self.documents[:count]
-        return self
-
-    def __iter__(self):
-        return iter(self.documents)
-
-
-class InMemoryCollection:
-    def __init__(self, name):
-        self.name = name
-        self.documents = []
-
-    def create_index(self, *args, **kwargs):
-        return None
-
-    def _matches(self, document, query):
-        if not query:
-            return True
-
-        for key, value in query.items():
-            doc_value = document.get(key)
-            if isinstance(value, dict):
-                if "$in" in value and doc_value not in value["$in"]:
-                    return False
-                if "$ne" in value and doc_value == value["$ne"]:
-                    return False
-            elif doc_value != value:
-                return False
-        return True
-
-    def _apply_projection(self, document, projection=None):
-        doc = deepcopy(document)
-        if not projection:
-            return doc
-
-        excluded = {key for key, value in projection.items() if value == 0}
-        if excluded:
-            for key in excluded:
-                doc.pop(key, None)
-        return doc
-
-    def find_one(self, query=None, projection=None):
-        for document in self.documents:
-            if self._matches(document, query or {}):
-                return self._apply_projection(document, projection)
-        return None
-
-    def find(self, query=None, projection=None):
-        matched = [
-            self._apply_projection(document, projection)
-            for document in self.documents
-            if self._matches(document, query or {})
-        ]
-        return InMemoryCursor(matched)
-
-    def insert_one(self, document):
-        stored = deepcopy(document)
-        stored.setdefault("_id", ObjectId())
-        self.documents.append(stored)
-        return InMemoryResult(inserted_id=stored["_id"])
-
-    def update_one(self, query, update, upsert=False):
-        for document in self.documents:
-            if self._matches(document, query):
-                original = deepcopy(document)
-                for key, value in update.get("$set", {}).items():
-                    document[key] = value
-                for key in update.get("$unset", {}).keys():
-                    document.pop(key, None)
-                modified = int(document != original)
-                return InMemoryResult(modified_count=modified)
-
-        if upsert:
-            new_document = deepcopy(query)
-            for key, value in update.get("$set", {}).items():
-                new_document[key] = value
-            result = self.insert_one(new_document)
-            return InMemoryResult(inserted_id=result.inserted_id, modified_count=1)
-
-        return InMemoryResult(modified_count=0)
-
-    def delete_one(self, query):
-        for index, document in enumerate(self.documents):
-            if self._matches(document, query):
-                del self.documents[index]
-                return InMemoryResult(deleted_count=1)
-        return InMemoryResult(deleted_count=0)
-
-    def count_documents(self, query):
-        return sum(1 for document in self.documents if self._matches(document, query))
-
-
-class InMemoryDatabase:
-    def __init__(self):
-        self.collections = {}
-
-    def __getitem__(self, name):
-        if name not in self.collections:
-            self.collections[name] = InMemoryCollection(name)
-        return self.collections[name]
-
-
+# MongoDB Connection
 DB_CONNECTED = False
 client = None
+db = None
 
-
-def get_database(client):
-    """Resolve the MongoDB database from explicit env vars or the URI default database."""
-    if DB_NAME:
-        return client[DB_NAME]
-
+def init_mongodb():
+    """Initialize MongoDB connection with proper error handling"""
+    global client, db, DB_CONNECTED
+    
     try:
-        return client.get_default_database()
-    except ConfigurationError:
-        return client["lifelink"]
+        # Try to connect to MongoDB with timeout
+        client = MongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000
+        )
+        
+        # Test the connection
+        client.admin.command('ping')
+        
+        # Get database
+        if DB_NAME:
+            db = client[DB_NAME]
+        else:
+            try:
+                db = client.get_default_database()
+            except ConfigurationError:
+                db = client["lifelink"]
+        
+        DB_CONNECTED = True
+        logger.info(f"✓ Connected to MongoDB database: {db.name}")
+        return True
+        
+    except (ServerSelectionTimeoutError, Exception) as e:
+        logger.error(f"✗ MongoDB connection failed: {e}")
+        logger.error("Please ensure MongoDB is running and accessible at: " + MONGO_URI)
+        logger.error("Starting with in-memory storage fallback...")
+        DB_CONNECTED = False
+        return False
 
-# MongoDB Connection
-try:
-    client = MongoClient(
-        MONGO_URI,
-        serverSelectionTimeoutMS=int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000"))
-    )
-    client.admin.command("ping")
-    db = get_database(client)
-    DB_CONNECTED = True
-    logger.info(f"Connected to MongoDB database: {db.name}")
-except Exception as e:
-    logger.warning(f"MongoDB unavailable, using in-memory storage fallback: {e}")
-    db = InMemoryDatabase()
+# Initialize MongoDB connection
+init_mongodb()
 
-def initialize_indexes():
-    """Create indexes for MongoDB collections when a real database is available."""
-    if not DB_CONNECTED:
-        return
-
+# Create collections if MongoDB is connected
+if DB_CONNECTED:
+    donors_collection = db['donors']
+    hospitals_collection = db['hospitals']
+    requests_collection = db['requests']
+    inventory_collection = db['inventory']
+    campaigns_collection = db['campaigns']
+    logs_collection = db['system_logs']
+    donations_collection = db['donations']
+    admins_collection = db['admins']
+    notifications_collection = db['notifications']
+    sessions_collection = db['sessions']
+    
+    # Create indexes
     try:
         donors_collection.create_index("email", unique=True)
         donors_collection.create_index("phone", unique=True)
         donors_collection.create_index("aadhar", unique=True, sparse=True)
         donors_collection.create_index("login_id", unique=True, sparse=True)
-
+        
         hospitals_collection.create_index("email", unique=True)
         hospitals_collection.create_index("hospital_id", unique=True, sparse=True)
         hospitals_collection.create_index("login_id", unique=True, sparse=True)
-
+        
         sessions_collection.create_index("token", unique=True)
         sessions_collection.create_index("expires_at", expireAfterSeconds=0)
-        logger.info("Database indexes ensured successfully")
+        logger.info("Database indexes created successfully")
     except Exception as e:
         logger.warning(f"Index creation warning: {e}")
+else:
+    # Use in-memory fallback
+    class InMemoryResult:
+        def __init__(self, inserted_id=None, modified_count=0, deleted_count=0):
+            self.inserted_id = inserted_id
+            self.modified_count = modified_count
+            self.deleted_count = deleted_count
 
-# Collections
-donors_collection = db['donors']
-hospitals_collection = db['hospitals']
-requests_collection = db['requests']
-inventory_collection = db['inventory']
-campaigns_collection = db['campaigns']
-logs_collection = db['system_logs']
-donations_collection = db['donations']
-admins_collection = db['admins']
-notifications_collection = db['notifications']
-sessions_collection = db['sessions']
-initialize_indexes()
+    class InMemoryCursor:
+        def __init__(self, documents):
+            self.documents = documents
+
+        def sort(self, field, direction=1):
+            reverse = direction == -1
+            self.documents.sort(
+                key=lambda item: (item.get(field) is None, str(item.get(field)) if item.get(field) is not None else ""),
+                reverse=reverse
+            )
+            return self
+
+        def limit(self, count):
+            self.documents = self.documents[:count]
+            return self
+
+        def __iter__(self):
+            return iter(self.documents)
+
+    class InMemoryCollection:
+        def __init__(self, name):
+            self.name = name
+            self.documents = []
+
+        def create_index(self, *args, **kwargs):
+            return None
+
+        def _matches(self, document, query):
+            if not query:
+                return True
+
+            for key, value in query.items():
+                doc_value = document.get(key)
+                if isinstance(value, dict):
+                    if "$in" in value and doc_value not in value["$in"]:
+                        return False
+                    if "$ne" in value and doc_value == value["$ne"]:
+                        return False
+                elif doc_value != value:
+                    return False
+            return True
+
+        def _apply_projection(self, document, projection=None):
+            doc = deepcopy(document)
+            if not projection:
+                return doc
+
+            excluded = {key for key, value in projection.items() if value == 0}
+            if excluded:
+                for key in excluded:
+                    doc.pop(key, None)
+            return doc
+
+        def find_one(self, query=None, projection=None):
+            for document in self.documents:
+                if self._matches(document, query or {}):
+                    return self._apply_projection(document, projection)
+            return None
+
+        def find(self, query=None, projection=None):
+            matched = [
+                self._apply_projection(document, projection)
+                for document in self.documents
+                if self._matches(document, query or {})
+            ]
+            return InMemoryCursor(matched)
+
+        def insert_one(self, document):
+            stored = deepcopy(document)
+            stored.setdefault("_id", ObjectId())
+            self.documents.append(stored)
+            return InMemoryResult(inserted_id=stored["_id"])
+
+        def update_one(self, query, update, upsert=False):
+            for document in self.documents:
+                if self._matches(document, query):
+                    original = deepcopy(document)
+                    for key, value in update.get("$set", {}).items():
+                        document[key] = value
+                    for key in update.get("$unset", {}).keys():
+                        document.pop(key, None)
+                    modified = int(document != original)
+                    return InMemoryResult(modified_count=modified)
+
+            if upsert:
+                new_document = deepcopy(query)
+                for key, value in update.get("$set", {}).items():
+                    new_document[key] = value
+                result = self.insert_one(new_document)
+                return InMemoryResult(inserted_id=result.inserted_id, modified_count=1)
+
+            return InMemoryResult(modified_count=0)
+
+        def delete_one(self, query):
+            for index, document in enumerate(self.documents):
+                if self._matches(document, query):
+                    del self.documents[index]
+                    return InMemoryResult(deleted_count=1)
+            return InMemoryResult(deleted_count=0)
+
+        def count_documents(self, query):
+            return sum(1 for document in self.documents if self._matches(document, query))
+
+    class InMemoryDatabase:
+        def __init__(self):
+            self.collections = {}
+
+        def __getitem__(self, name):
+            if name not in self.collections:
+                self.collections[name] = InMemoryCollection(name)
+            return self.collections[name]
+
+    db = InMemoryDatabase()
+    donors_collection = db['donors']
+    hospitals_collection = db['hospitals']
+    requests_collection = db['requests']
+    inventory_collection = db['inventory']
+    campaigns_collection = db['campaigns']
+    logs_collection = db['system_logs']
+    donations_collection = db['donations']
+    admins_collection = db['admins']
+    notifications_collection = db['notifications']
+    sessions_collection = db['sessions']
+    
+    logger.info("Using in-memory storage fallback")
 
 # -------------------- Frontend Routes --------------------
 @app.route('/')
@@ -446,7 +469,8 @@ def serialize_user(user):
     if not user:
         return None
     user = dict(user)
-    user["_id"] = str(user["_id"])
+    if "_id" in user:
+        user["_id"] = str(user["_id"])
     user.pop("password", None)
     user.pop("pending_password", None)
     return user
@@ -546,6 +570,8 @@ def register_user():
             
             result = donors_collection.insert_one(donor_data)
             
+            logger.info(f"Donor registered successfully - ID: {result.inserted_id}, Login ID: {login_id}")
+            
             # Send welcome email
             send_welcome_email(email, fullname, "donor", login_id, password)
             
@@ -574,7 +600,7 @@ def register_user():
                 return jsonify({"error": "Missing hospital fields"}), 400
 
             # Handle certificate upload
-            cert_file = request.files.get("certificate_pdf")
+            cert_file = request.files.get("certificate_pdf") if request.files else None
             certificate_path = None
             
             if cert_file and cert_file.filename:
@@ -592,8 +618,6 @@ def register_user():
                 cert_file.save(filepath)
                 certificate_path = f"/static/uploads/certificates/{safe_filename}"
                 logger.info(f"Certificate saved: {certificate_path}")
-            else:
-                return jsonify({"error": "Certificate PDF is required"}), 400
 
             # Create hospital (pending approval)
             hospital_data = {
@@ -617,6 +641,8 @@ def register_user():
             
             result = hospitals_collection.insert_one(hospital_data)
             
+            logger.info(f"Hospital registered (pending) - ID: {result.inserted_id}")
+            
             # Send confirmation email
             send_hospital_pending_email(email, fullname)
             
@@ -637,6 +663,8 @@ def register_user():
 
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Registration failed: {str(e)}"}), 500
 
 @app.route("/auth/admin/register", methods=["POST"])
@@ -1069,12 +1097,7 @@ def hospital_request():
             })
             
             for donor in matching_donors:
-                # Send SMS if phone available
-                if donor.get("phone"):
-                    # You would integrate SMS here
-                    pass
-                
-                # Send email
+                # Send email if available
                 if donor.get("email"):
                     send_email(
                         donor["email"],
@@ -1417,8 +1440,8 @@ def get_stats():
         hospitals_count = hospitals_collection.count_documents({"status": "approved"})
         donations_count = donations_collection.count_documents({})
         
-        # For demo purposes, use some calculations
-        saved_lives = donations_count * 2  # Each donation can save up to 2 lives
+        # Each donation can save up to 2 lives
+        saved_lives = donations_count * 2
         
         return jsonify({
             "donors": donors_count,
@@ -1445,10 +1468,12 @@ def get_users():
         for donor in donors:
             donor['user_type'] = 'donor'
             donor['_id'] = str(donor['_id'])
+            donor['registeredDate'] = donor.get('created_at', datetime.utcnow()).isoformat() if donor.get('created_at') else datetime.utcnow().isoformat()
         
         for hospital in hospitals:
             hospital['user_type'] = 'hospital'
             hospital['_id'] = str(hospital['_id'])
+            hospital['registeredDate'] = hospital.get('created_at', datetime.utcnow()).isoformat() if hospital.get('created_at') else datetime.utcnow().isoformat()
         
         all_users = donors + hospitals
         return jsonify(all_users), 200
@@ -1773,11 +1798,15 @@ if __name__ == '__main__':
     debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
     print("=" * 50)
-    print(f"Starting LifeLink Server on port {port}")
+    print("Starting LifeLink Server on port", port)
     print("=" * 50)
     
-    initialize_indexes()
-
+    if DB_CONNECTED:
+        print(f"✓ Connected to MongoDB at: {MONGO_URI}")
+        print(f"✓ Using database: {db.name if DB_CONNECTED else 'in-memory'}")
+    else:
+        print("⚠ Using in-memory storage (MongoDB not available)")
+    
     print(f"✓ Server ready at: http://localhost:{port}")
     print("=" * 50)
     

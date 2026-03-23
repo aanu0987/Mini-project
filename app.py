@@ -59,47 +59,27 @@ DB_CONNECTED = False
 client = None
 db = None
 
-def init_mongodb():
-    """Initialize MongoDB connection with proper error handling"""
-    global client, db, DB_CONNECTED
-    
-    try:
-        # Try to connect to MongoDB with timeout
-        client = MongoClient(
-            MONGO_URI,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000,
-            socketTimeoutMS=5000
-        )
-        
-        # Test the connection
-        client.admin.command('ping')
-        
-        # Get database
-        if DB_NAME:
-            db = client[DB_NAME]
-        else:
-            try:
-                db = client.get_default_database()
-            except ConfigurationError:
-                db = client["lifelink"]
-        
-        DB_CONNECTED = True
-        logger.info(f"✓ Connected to MongoDB database: {db.name}")
-        return True
-        
-    except (ServerSelectionTimeoutError, Exception) as e:
-        logger.error(f"✗ MongoDB connection failed: {e}")
-        logger.error("Please ensure MongoDB is running and accessible at: " + MONGO_URI)
-        logger.error("Starting with in-memory storage fallback...")
-        DB_CONNECTED = False
-        return False
+donors_collection = None
+hospitals_collection = None
+requests_collection = None
+inventory_collection = None
+campaigns_collection = None
+logs_collection = None
+donations_collection = None
+admins_collection = None
+notifications_collection = None
+sessions_collection = None
 
-# Initialize MongoDB connection
-init_mongodb()
 
-# Create collections if MongoDB is connected
-if DB_CONNECTED:
+def configure_collections(database):
+    """Bind application collection globals to the active database."""
+    global db
+    global donors_collection, hospitals_collection, requests_collection
+    global inventory_collection, campaigns_collection, logs_collection
+    global donations_collection, admins_collection, notifications_collection
+    global sessions_collection
+
+    db = database
     donors_collection = db['donors']
     hospitals_collection = db['hospitals']
     requests_collection = db['requests']
@@ -110,24 +90,90 @@ if DB_CONNECTED:
     admins_collection = db['admins']
     notifications_collection = db['notifications']
     sessions_collection = db['sessions']
-    
-    # Create indexes
+
+
+def create_database_indexes():
+    """Create the indexes needed by the application."""
     try:
         donors_collection.create_index("email", unique=True)
         donors_collection.create_index("phone", unique=True)
         donors_collection.create_index("aadhar", unique=True, sparse=True)
         donors_collection.create_index("login_id", unique=True, sparse=True)
-        
+
         hospitals_collection.create_index("email", unique=True)
         hospitals_collection.create_index("hospital_id", unique=True, sparse=True)
         hospitals_collection.create_index("login_id", unique=True, sparse=True)
-        
+
         sessions_collection.create_index("token", unique=True)
         sessions_collection.create_index("expires_at", expireAfterSeconds=0)
         logger.info("Database indexes created successfully")
     except Exception as e:
         logger.warning(f"Index creation warning: {e}")
-else:
+
+
+def init_mongodb():
+    """Initialize MongoDB connection with proper error handling."""
+    global client, db, DB_CONNECTED
+
+    try:
+        client = MongoClient(
+            MONGO_URI,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000
+        )
+
+        client.admin.command('ping')
+
+        if DB_NAME:
+            active_db = client[DB_NAME]
+        else:
+            try:
+                active_db = client.get_default_database()
+            except ConfigurationError:
+                active_db = client["lifelink"]
+
+        configure_collections(active_db)
+        DB_CONNECTED = True
+        logger.info(f"✓ Connected to MongoDB database: {db.name}")
+        create_database_indexes()
+        return True
+
+    except (ServerSelectionTimeoutError, Exception) as e:
+        logger.error(f"✗ MongoDB connection failed: {e}")
+        logger.error("Please ensure MongoDB is running and accessible at: " + MONGO_URI)
+        logger.error("Starting with in-memory storage fallback...")
+        DB_CONNECTED = False
+        client = None
+        db = None
+        return False
+
+
+def ensure_persistent_storage():
+    """Reconnect to MongoDB before writes so registrations are not lost in memory."""
+    global DB_CONNECTED
+    if DB_CONNECTED:
+        return True
+
+    logger.info("MongoDB is not connected. Retrying database connection before continuing.")
+    return init_mongodb()
+
+
+def require_persistent_storage():
+    """Return a Flask error response when MongoDB is unavailable for persistent writes."""
+    if ensure_persistent_storage():
+        return None
+
+    return jsonify({
+        "error": "MongoDB is unavailable. Please start the local MongoDB server and try again."
+    }), 503
+
+
+# Initialize MongoDB connection
+init_mongodb()
+
+# Create collections if MongoDB is connected
+if not DB_CONNECTED:
     # Use in-memory fallback
     class InMemoryResult:
         def __init__(self, inserted_id=None, modified_count=0, deleted_count=0):
@@ -493,6 +539,10 @@ def create_notification(event_type, message, **extra):
 @app.route("/auth/register", methods=["POST"])
 def register_user():
     """Register a new donor or hospital"""
+    storage_error = require_persistent_storage()
+    if storage_error:
+        return storage_error
+
     try:
         data = request.get_json(silent=True) or request.form.to_dict() or {}
         role = data.get("role")
@@ -670,6 +720,10 @@ def register_user():
 @app.route("/auth/admin/register", methods=["POST"])
 def register_admin():
     """Register the first admin (only one allowed)"""
+    storage_error = require_persistent_storage()
+    if storage_error:
+        return storage_error
+
     try:
         data = request.get_json() or {}
         fullname = (data.get("fullname") or "").strip()

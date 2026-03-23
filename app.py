@@ -46,8 +46,8 @@ def get_env_value(*keys, default=None):
             return value
     return default
 
-MONGO_URI = get_env_value("MONGO_URI", "MONGODB_URI", "MONGO_URL", "DATABASE_URL", default="mongodb://localhost:27017/")
-DB_NAME = get_env_value("MONGO_DB", "MONGODB_DB", "DB_NAME")
+MONGO_URI = get_env_value("MONGO_URI", "MONGODB_URI", "MONGO_URL", "DATABASE_URL", default="mongodb://localhost:27017/lifelink")
+DB_NAME = get_env_value("MONGO_DB", "MONGODB_DB", "DB_NAME", default="lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))

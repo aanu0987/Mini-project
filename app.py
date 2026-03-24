@@ -46,7 +46,13 @@ def get_env_value(*keys, default=None):
             return value
     return default
 
-MONGO_URI = get_env_value("MONGO_URI", "MONGODB_URI", "MONGO_URL", "DATABASE_URL", default="mongodb://localhost:27017")
+def normalize_mongo_uri(uri):
+    """Normalize URI values read from environment variables."""
+    if not uri:
+        return None
+    return uri.strip().strip('"').strip("'")
+
+MONGO_URI = normalize_mongo_uri(get_env_value("MONGO_URI", "MONGODB_URI", "MONGO_URL"))
 DB_NAME = get_env_value("MONGO_DB", "MONGODB_DB", "DB_NAME", default="lifelink")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lifelink.donors@gmail.com")
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -56,6 +62,7 @@ EMAIL_NOTIFICATIONS_ENABLED = bool(SENDER_EMAIL and APP_PASSWORD)
 
 # MongoDB Connection
 DB_CONNECTED = False
+ACTIVE_MONGO_URI = None
 client = None
 db = None
 
@@ -113,40 +120,59 @@ def create_database_indexes():
 
 def init_mongodb():
     """Initialize MongoDB connection with proper error handling."""
-    global client, db, DB_CONNECTED
+    global client, db, DB_CONNECTED, ACTIVE_MONGO_URI
 
-    try:
-        client = MongoClient(
-            MONGO_URI,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000,
-            socketTimeoutMS=5000
-        )
+    candidate_uris = []
+    if MONGO_URI:
+        candidate_uris.append(MONGO_URI)
+    candidate_uris.extend([
+        "mongodb://127.0.0.1:27017",
+        "mongodb://localhost:27017"
+    ])
 
-        client.admin.command('ping')
+    # Preserve order while removing duplicates
+    candidate_uris = list(dict.fromkeys(candidate_uris))
 
-        if DB_NAME:
-            active_db = client[DB_NAME]
-        else:
-            try:
-                active_db = client.get_default_database()
-            except ConfigurationError:
-                active_db = client["lifelink"]
+    last_error = None
+    for uri in candidate_uris:
+        try:
+            test_client = MongoClient(
+                uri,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=5000,
+                socketTimeoutMS=5000
+            )
 
-        configure_collections(active_db)
-        DB_CONNECTED = True
-        logger.info(f"✓ Connected to MongoDB database: {db.name}")
-        create_database_indexes()
-        return True
+            test_client.admin.command('ping')
+            client = test_client
+            ACTIVE_MONGO_URI = uri
 
-    except (ServerSelectionTimeoutError, Exception) as e:
-        logger.error(f"✗ MongoDB connection failed: {e}")
-        logger.error("Please ensure MongoDB is running and accessible at: " + MONGO_URI)
-        logger.error("Starting with in-memory storage fallback...")
-        DB_CONNECTED = False
-        client = None
-        db = None
-        return False
+            if DB_NAME:
+                active_db = client[DB_NAME]
+            else:
+                try:
+                    active_db = client.get_default_database()
+                except ConfigurationError:
+                    active_db = client["lifelink"]
+
+            configure_collections(active_db)
+            DB_CONNECTED = True
+            logger.info(f"✓ Connected to MongoDB database: {db.name} via {ACTIVE_MONGO_URI}")
+            create_database_indexes()
+            return True
+
+        except (ServerSelectionTimeoutError, Exception) as e:
+            last_error = e
+            logger.warning(f"MongoDB connection attempt failed for {uri}: {e}")
+
+    logger.error(f"✗ MongoDB connection failed: {last_error}")
+    logger.error("Please ensure MongoDB is running and accessible at one of: " + ", ".join(candidate_uris))
+    logger.error("Starting with in-memory storage fallback...")
+    DB_CONNECTED = False
+    ACTIVE_MONGO_URI = None
+    client = None
+    db = None
+    return False
 
 
 def ensure_persistent_storage():
@@ -165,7 +191,7 @@ def require_persistent_storage():
         return None
 
     return jsonify({
-        "error": "MongoDB is unavailable. Please start the local MongoDB server and try again."
+        "error": "MongoDB is unavailable. Ensure your MONGO_URI/MONGODB_URI is correct or start MongoDB on localhost:27017."
     }), 503
 
 
@@ -1856,7 +1882,7 @@ if __name__ == '__main__':
     print("=" * 50)
     
     if DB_CONNECTED:
-        print(f"✓ Connected to MongoDB at: {MONGO_URI}")
+        print(f"✓ Connected to MongoDB at: {ACTIVE_MONGO_URI}")
         print(f"✓ Using database: {db.name if DB_CONNECTED else 'in-memory'}")
     else:
         print("⚠ Using in-memory storage (MongoDB not available)")

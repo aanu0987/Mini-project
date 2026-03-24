@@ -160,7 +160,6 @@ function initRegister() {
         email: document.getElementById('email')?.value?.trim(),
         password: document.getElementById('password')?.value,
         city: document.getElementById('city')?.value,
-        donor_type: 'blood',
         gender: document.getElementById('gender')?.value,
         aadhar: document.getElementById('aadhar')?.value?.trim(),
         weight: document.getElementById('weight')?.value,

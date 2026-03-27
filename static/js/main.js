@@ -1,5 +1,5 @@
 const API_BASE = window.location.origin;
-const AUTH_REQUIRED_MESSAGE = 'Please login to access Hospitals and Dashboard.';
+const AUTH_REQUIRED_MESSAGE = 'Please login to access Blood Donors and Dashboard.';
 
 function getToken() {
   return localStorage.getItem('token');
@@ -251,8 +251,7 @@ function initLogin() {
     localStorage.setItem('user', JSON.stringify(data.user));
 
     if (role === 'admin') window.location.href = '/admin';
-    if (role === 'hospital') window.location.href = '/hospital_dashboard';
-    if (role === 'donor') window.location.href = '/dashboard';
+    if (role === 'hospital' || role === 'donor') window.location.href = '/dashboard';
   });
 }
 
@@ -412,10 +411,7 @@ async function initHospitalDashboard() {
     const data = await res.json();
     
     if (!res.ok) {
-      const notificationsEl = document.getElementById('hospital-notifications');
-      if (notificationsEl) {
-        notificationsEl.innerHTML = `<p class="alert alert-danger">${data.error || 'Unauthorized'}</p>`;
-      }
+      alert(data.error || 'Unable to load hospital dashboard');
       return;
     }
 
@@ -427,19 +423,6 @@ async function initHospitalDashboard() {
     document.getElementById('edit-hospital-address').value = hospital.address || '';
     document.getElementById('edit-hospital-city').value = hospital.city || '';
     document.getElementById('edit-hospital-license').value = hospital.license_number || '';
-
-    // Show notifications
-    const notificationsEl = document.getElementById('hospital-notifications');
-    if (notificationsEl) {
-      notificationsEl.innerHTML = (data.notifications || []).length === 0
-        ? '<p class="text-muted">No notifications yet.</p>'
-        : (data.notifications || []).map(n => `
-          <div class="glass-panel" style="padding:12px; margin:8px 0;">
-            ${n.message}
-            <br><small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
-          </div>
-        `).join('');
-    }
 
     // Event listeners for buttons
     document.getElementById('organ-request-btn')?.addEventListener('click', () => sendHospitalEvent('request', 'organ'));
@@ -477,10 +460,7 @@ async function initHospitalDashboard() {
 
   } catch (error) {
     console.error('Error loading hospital dashboard:', error);
-    const notificationsEl = document.getElementById('hospital-notifications');
-    if (notificationsEl) {
-      notificationsEl.innerHTML = '<p class="alert alert-danger">Error loading dashboard.</p>';
-    }
+    alert('Error loading hospital dashboard.');
   }
 }
 
@@ -614,33 +594,33 @@ async function initDonorDashboard() {
 }
 
 async function initPublicDonorList() {
-  const hospitalsList = document.getElementById('blood-donors-list');
-  if (!hospitalsList) return;
+  const donorsList = document.getElementById('blood-donors-list');
+  if (!donorsList) return;
 
   try {
-    const res = await fetch(`${API_BASE}/api/hospitals`);
+    const res = await fetch(`${API_BASE}/api/donors`);
     const data = await res.json();
     
     if (!res.ok) {
-      hospitalsList.innerHTML = '<p class="alert alert-danger">Unable to load hospitals.</p>';
+      donorsList.innerHTML = '<p class="alert alert-danger">Unable to load blood donors.</p>';
       return;
     }
 
-    hospitalsList.innerHTML = data.length === 0
-      ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No approved hospitals found.</p>'
-      : data.map(h => `
+    donorsList.innerHTML = data.length === 0
+      ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No approved blood donors found.</p>'
+      : data.map(d => `
         <div class="donor-card">
           <div class="donor-header">
-            <div class="donor-name">${h.hospital_name || 'Unnamed Hospital'}</div>
-            <div class="blood-group">${h.city || 'N/A'}</div>
+            <div class="donor-name">${d.fullname || 'Unnamed Donor'}</div>
+            <div class="blood-group">${d.blood_group || 'N/A'}</div>
           </div>
           <div class="donor-details">
-            <div class="donor-detail-item"><span>🏥</span> ${h.hospital_name || 'Unnamed Hospital'}</div>
-            <div class="donor-detail-item"><span>📞</span> ${h.phone || 'N/A'}</div>
-            <div class="donor-detail-item"><span>📍</span> ${h.address || 'Address not provided'}</div>
-            <div class="donor-detail-item"><span>🌆</span> ${h.city || 'City not provided'}</div>
+            <div class="donor-detail-item"><span>👤</span> ${d.fullname || 'Unnamed Donor'}</div>
+            <div class="donor-detail-item"><span>📞</span> ${d.phone || 'N/A'}</div>
+            <div class="donor-detail-item"><span>🌆</span> ${d.city || 'City not provided'}</div>
+            <div class="donor-detail-item"><span>🩸</span> ${d.blood_group || 'Blood group not available'}</div>
           </div>
-          <a href="tel:${h.phone || ''}" class="btn contact-btn">Contact Hospital</a>
+          <a href="tel:${d.phone || ''}" class="btn contact-btn">Call Donor</a>
         </div>
       `).join('');
 
@@ -654,7 +634,7 @@ async function initPublicDonorList() {
       });
     }
   } catch (error) {
-    console.error('Error fetching hospitals:', error);
-    hospitalsList.innerHTML = '<p class="alert alert-danger">Failed to load hospitals. Make sure the backend is running.</p>';
+    console.error('Error fetching blood donors:', error);
+    donorsList.innerHTML = '<p class="alert alert-danger">Failed to load blood donors. Make sure the backend is running.</p>';
   }
 }

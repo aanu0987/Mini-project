@@ -19,7 +19,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="/">Home</a></li>
-            <li><a href="/blood_donors">Hospitals</a></li>
+            <li><a href="/blood_donors">Blood Donors</a></li>
             <li><a href="/dashboard" id="dashboard-link" class="active">Dashboard</a></li>
             <li><a href="/about_us">About Us</a></li>
         </ul>
@@ -147,7 +147,7 @@
             const role = localStorage.getItem('role');
             
             if (!userStr) {
-                alert('Please login to access Hospitals and Dashboard.');
+                alert('Please login to access Blood Donors and Dashboard.');
                 window.location.href = '/login';
                 return;
             }

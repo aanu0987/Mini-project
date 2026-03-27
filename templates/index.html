@@ -18,7 +18,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="/" class="active">Home</a></li>
-            <li><a href="/blood_donors" id="find-donors-link">Hospitals</a></li>
+            <li><a href="/blood_donors" id="find-donors-link">Blood Donors</a></li>
             <li><a href="/dashboard" id="dashboard-link">Dashboard</a></li>
             <li><a href="/about_us">About Us</a></li>
         </ul>
@@ -37,7 +37,7 @@
         <section class="hero">
             <div class="hero-content">
                 <h1>Give the Gift of Life</h1>
-                <p>Connect with donors and hospitals seamlessly. Your decision can save a life today.</p>
+                <p>Connect with blood donors and hospitals seamlessly. Your decision can save a life today.</p>
                 <div class="hero-buttons">
                     <a href="/register" class="btn">Register</a>
                     <a href="/login" class="btn btn-secondary">Login</a>
@@ -179,7 +179,7 @@
                 link.addEventListener('click', (event) => {
                     if (token) return;
                     event.preventDefault();
-                    alert('Please login to access Find Donors and Dashboard.');
+                    alert('Please login to access Blood Donors and Dashboard.');
                     window.location.href = '/login';
                 });
             });

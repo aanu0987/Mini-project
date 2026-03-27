@@ -460,7 +460,7 @@ LifeLink Team
     return send_email(user_email, f'Welcome to LifeLink - Registration Successful!', content)
 
 
-def send_hospital_pending_email(user_email, user_name):
+def send_hospital_pending_email(user_email, user_name, password=None):
     """Send hospital registration pending verification email"""
     content = f"""
 Dear {user_name},
@@ -470,7 +470,9 @@ Thank you for registering with LifeLink Hospital Network.
 Your registration is complete and is now pending admin verification.
 Please wait while the admin verifies your account details.
 
-You will receive another email with your login ID and password immediately after your account is approved.
+Password created during registration: {password or "Not provided"}
+
+You will receive another email with your login ID after your account is approved.
 
 Regards,
 LifeLink Team
@@ -720,7 +722,7 @@ def register_user():
             logger.info(f"Hospital registered (pending) - ID: {result.inserted_id}")
             
             # Send confirmation email
-            send_hospital_pending_email(email, fullname)
+            send_hospital_pending_email(email, fullname, password)
             
             # Notify admin
             create_notification(

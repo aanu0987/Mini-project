@@ -360,177 +360,149 @@
         
         async function loadHospitalDashboard(user) {
             const container = document.getElementById('dashboard-container');
-            
+            const token = localStorage.getItem('token') || '';
+
             try {
-                const hospitalId = user.hospital_id;
-                const response = await fetch(`http://localhost:5000/api/hospital/${hospitalId}`);
+                const response = await fetch('/hospital/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 const data = await response.json();
-                
-                const inventory = data.inventory?.blood_inventory || {};
-                const requests = data.requests || [];
-                const donors = data.donors || [];
-                
+
+                if (!response.ok) {
+                    container.innerHTML = `<div class="alert alert-danger" style="text-align: center;">${data.error || 'Unable to load hospital dashboard.'}</div>`;
+                    return;
+                }
+
+                const hospital = data.hospital || user || {};
+                const pendingRequests = data.pending_requests || [];
+                const notifications = data.notifications || [];
+                const nearbyDonors = data.nearby_donors || [];
+                const recentRequests = pendingRequests.slice(0, 10);
+                const recentNotifications = notifications.slice(0, 8);
+
                 container.innerHTML = `
                     <div class="dashboard-header" style="background: linear-gradient(135deg, #27ae60, #229954);">
-                        <h1>${data.hospital.fullname}</h1>
-                        <p>Hospital ID: ${hospitalId}</p>
-                        <p>Status: 
-                            <span class="badge ${data.hospital.verified ? 'badge-success' : 'badge-warning'}">
-                                ${data.hospital.verified ? 'Verified' : 'Pending Verification'}
+                        <h1>${hospital.hospital_name || hospital.fullname || 'Hospital Dashboard'}</h1>
+                        <p>Welcome back, ${hospital.fullname || 'Hospital Partner'}. Manage requests and track donor availability.</p>
+                        <p>
+                            Login ID: ${hospital.login_id || 'Not assigned'}
+                            <span class="badge ${hospital.status === 'approved' ? 'badge-success' : 'badge-warning'}" style="margin-left: 8px;">
+                                ${(hospital.status || 'pending').toUpperCase()}
                             </span>
                         </p>
                     </div>
-                    
+
                     <div class="stats-grid">
                         <div class="stat-card dashboard-stat hospital">
-                            <div class="stat-value">${donors.length}</div>
-                            <div class="stat-label">Available Donors</div>
+                            <div class="stat-value">${nearbyDonors.length}</div>
+                            <div class="stat-label">Nearby Donors</div>
                         </div>
                         <div class="stat-card dashboard-stat blood">
-                            <div class="stat-value">${requests.filter(r => r.status === 'pending').length}</div>
+                            <div class="stat-value">${pendingRequests.length}</div>
                             <div class="stat-label">Pending Requests</div>
                         </div>
                         <div class="stat-card dashboard-stat organ">
-                            <div class="stat-value">${Object.values(inventory).reduce((a, b) => a + b, 0)}</div>
-                            <div class="stat-label">Blood Units</div>
+                            <div class="stat-value">${recentNotifications.filter(n => n.type === 'received').length}</div>
+                            <div class="stat-label">Completed Updates</div>
                         </div>
                         <div class="stat-card dashboard-stat">
-                            <div class="stat-value">45</div>
-                            <div class="stat-label">Completed Donations</div>
+                            <div class="stat-value">${recentNotifications.length}</div>
+                            <div class="stat-label">Recent Alerts</div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Quick Actions</h3>
+                                <h3 class="card-title">Hospital Profile</h3>
                             </div>
                             <div class="card-body">
-                                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                    <button class="btn btn-primary" onclick="openBloodRequestModal()">
-                                        <i class="fas fa-tint"></i> Request Blood
-                                    </button>
-                                    <button class="btn btn-success" onclick="window.location.href='blood_donors.html'">
-                                        <i class="fas fa-search"></i> Find Donors
-                                    </button>
-                                </div>
+                                <p><b>Name:</b> ${hospital.hospital_name || hospital.fullname || 'N/A'}</p>
+                                <p><b>Email:</b> ${hospital.email || 'N/A'}</p>
+                                <p><b>Phone:</b> ${hospital.phone || 'N/A'}</p>
+                                <p><b>City:</b> ${hospital.city || 'N/A'}</p>
+                                <p><b>Address:</b> ${hospital.address || 'N/A'}</p>
+                                <p><b>License Number:</b> ${hospital.license_number || 'N/A'}</p>
                             </div>
                         </div>
-                        
+
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Blood Inventory</h3>
+                                <h3 class="card-title">Nearby Donors</h3>
+                                <span class="badge badge-success">${nearbyDonors.length}</span>
                             </div>
-                            <div class="card-body">
-                                <div style="display: grid; gap: 1rem;">
-                                    ${Object.entries(inventory).map(([blood, quantity]) => `
-                                        <div>
-                                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                                                <span>${blood}</span>
-                                                <span>${quantity} units</span>
-                                            </div>
-                                            <div class="progress">
-                                                <div class="progress-bar" style="width: ${(quantity/50)*100}%;"></div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
+                            <div class="card-body" style="max-height: 280px; overflow-y: auto;">
+                                ${nearbyDonors.length === 0 ? '<p class="text-muted">No available donors found in your district.</p>' : nearbyDonors.map(d => `
+                                    <div class="glass-panel" style="padding: 10px; margin-bottom: 8px;">
+                                        <b>${d.fullname || 'Donor'}</b> (${d.blood_group || 'N/A'})<br>
+                                        ${d.phone ? `📞 ${d.phone}<br>` : ''}
+                                        ${d.email ? `📧 ${d.email}` : ''}
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Pending Donation Requests</h3>
-                            <span class="badge badge-danger">${requests.filter(r => r.status === 'pending').length}</span>
+                            <span class="badge badge-danger">${pendingRequests.length}</span>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table">
                                     <thead>
                                         <tr>
+                                            <th>Type</th>
+                                            <th>Details</th>
                                             <th>Blood Group</th>
-                                            <th>Patient</th>
                                             <th>Urgency</th>
-                                            <th>Date</th>
-                                            <th>Action</th>
+                                            <th>Created</th>
+                                            <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        ${requests.filter(r => r.status === 'pending').map(r => `
+                                        ${recentRequests.map(req => `
                                             <tr>
-                                                <td><span class="badge badge-danger">${r.blood_group || 'N/A'}</span></td>
-                                                <td>${r.patient_name || 'Unknown'}</td>
-                                                <td><span class="badge ${r.urgency === 'emergency' ? 'badge-danger' : 'badge-warning'}">${r.urgency || 'normal'}</span></td>
-                                                <td>${new Date(r.created_at).toLocaleDateString()}</td>
-                                                <td>
-                                                    <button class="btn btn-success btn-sm" onclick="approveRequest('${r._id}')">Approve</button>
-                                                    <button class="btn btn-danger btn-sm" onclick="rejectRequest('${r._id}')">Reject</button>
-                                                </td>
+                                                <td><span class="badge ${req.request_type === 'blood' ? 'badge-danger' : 'badge-success'}">${(req.request_type || 'N/A').toUpperCase()}</span></td>
+                                                <td>${req.details || req.patient_name || 'N/A'}</td>
+                                                <td>${req.blood_group || 'N/A'}</td>
+                                                <td><span class="badge ${req.urgency === 'emergency' ? 'badge-danger' : 'badge-warning'}">${(req.urgency || 'normal').toUpperCase()}</span></td>
+                                                <td>${req.created_at ? new Date(req.created_at).toLocaleString() : 'N/A'}</td>
+                                                <td><span class="badge badge-warning">${(req.status || 'pending').toUpperCase()}</span></td>
                                             </tr>
                                         `).join('')}
-                                        ${requests.filter(r => r.status === 'pending').length === 0 ? `
-                                            <tr>
-                                                <td colspan="5" style="text-align: center;">No pending requests</td>
-                                            </tr>
-                                        ` : ''}
+                                        ${recentRequests.length === 0 ? '<tr><td colspan="6" style="text-align: center;">No pending requests.</td></tr>' : ''}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Available Donors in Your Area</h3>
-                            <input type="text" class="form-control" placeholder="Search donors..." style="width: 300px;" id="donorSearch">
+                            <h3 class="card-title">Hospital Notifications</h3>
+                            <span class="badge badge-primary">${recentNotifications.length}</span>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table" id="donorTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Blood Group</th>
-                                            <th>Phone</th>
-                                            <th>Last Donation</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${donors.map(d => `
-                                            <tr>
-                                                <td>${d.fullname}</td>
-                                                <td><span class="badge badge-danger">${d.blood_group || 'Unknown'}</span></td>
-                                                <td>${d.phone}</td>
-                                                <td>${d.last_donation ? new Date(d.last_donation).toLocaleDateString() : 'Never'}</td>
-                                                <td>
-                                                    <button class="btn btn-primary btn-sm" onclick="contactDonor('${d._id}', '${d.phone}')">
-                                                        Contact
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                        ${donors.length === 0 ? `
-                                            <tr>
-                                                <td colspan="5" style="text-align: center;">No donors available in your area</td>
-                                            </tr>
-                                        ` : ''}
-                                    </tbody>
-                                </table>
-                            </div>
+                            ${recentNotifications.length === 0 ? '<p class="text-muted">No notifications available.</p>' : recentNotifications.map(note => `
+                                <div class="glass-panel" style="padding: 12px; margin: 8px 0;">
+                                    <b>${(note.type || 'Notification').toUpperCase()}</b><br>
+                                    ${note.message || ''}<br>
+                                    <small>${note.created_at ? new Date(note.created_at).toLocaleString() : ''}</small>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                 `;
-                
-                setupDonorSearch();
-                
             } catch (error) {
                 console.error('Error loading hospital dashboard:', error);
-                container.innerHTML = '<div class="alert alert-danger" style="text-align: center;">Error loading dashboard. Please refresh.</div>';
+                container.innerHTML = '<div class="alert alert-danger" style="text-align: center;">Error loading hospital dashboard. Please refresh.</div>';
             }
         }
-        
+
         async function loadDonorDashboard(user, profileMessage = '') {
             const container = document.getElementById('dashboard-container');
             

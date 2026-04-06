@@ -67,6 +67,21 @@
             <p>Join thousands of donors and hospitals in our mission to save lives through organ and blood donation.</p>
             <a href="/register" class="btn btn-lg">Get Started Today</a>
         </section>
+
+        <!-- Blood Donors & Users -->
+        <section class="donors-container" style="margin-top: 24px;">
+            <h2 style="color: var(--primary-color); margin-bottom: 20px;">Blood Donors</h2>
+            <div id="home-blood-donors-list" class="donor-grid">
+                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading blood donors...</p>
+            </div>
+        </section>
+
+        <section class="donors-container" style="margin-top: 24px;">
+            <h2 style="color: var(--primary-color); margin-bottom: 20px;">All Users Details</h2>
+            <div id="home-all-users-list" class="donor-grid">
+                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading user details...</p>
+            </div>
+        </section>
     </main>
 
     <!-- Footer -->
@@ -167,6 +182,71 @@
             }
         }
 
+        async function initHomeDonorAndUserLists() {
+            const donorsList = document.getElementById('home-blood-donors-list');
+            const usersList = document.getElementById('home-all-users-list');
+            if (!donorsList || !usersList) return;
+
+            try {
+                const [donorsRes, usersRes] = await Promise.all([
+                    fetch('http://localhost:5000/api/donors'),
+                    fetch('http://localhost:5000/api/public-users')
+                ]);
+
+                const donors = await donorsRes.json();
+                const usersData = await usersRes.json();
+
+                if (!donorsRes.ok) {
+                    donorsList.innerHTML = '<p class="alert alert-danger">Unable to load blood donors.</p>';
+                } else {
+                    donorsList.innerHTML = donors.length === 0
+                        ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No approved blood donors found.</p>'
+                        : donors.map((d) => `
+                            <div class="donor-card">
+                                <div class="donor-header">
+                                    <div class="donor-name">${d.fullname || 'Unnamed Donor'}</div>
+                                    <div class="blood-group">${d.blood_group || 'N/A'}</div>
+                                </div>
+                                <div class="donor-details">
+                                    <div class="donor-detail-item"><span>👤</span> ${d.fullname || 'Unnamed Donor'}</div>
+                                    <div class="donor-detail-item"><span>📞</span> ${d.phone || 'N/A'}</div>
+                                    <div class="donor-detail-item"><span>🌆</span> ${d.city || 'City not provided'}</div>
+                                    <div class="donor-detail-item"><span>🩸</span> ${d.blood_group || 'Blood group not available'}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                }
+
+                if (!usersRes.ok) {
+                    usersList.innerHTML = '<p class="alert alert-danger">Unable to load user details.</p>';
+                } else {
+                    const allUsers = [...(usersData.donors || []), ...(usersData.hospitals || [])];
+                    usersList.innerHTML = allUsers.length === 0
+                        ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No users found.</p>'
+                        : allUsers.map((u) => `
+                            <div class="donor-card" data-role="${u.role || 'user'}">
+                                <div class="donor-header">
+                                    <div class="donor-name">${u.fullname || 'Unnamed User'}</div>
+                                    <div class="blood-group">${(u.role || 'user').toUpperCase()}</div>
+                                </div>
+                                <div class="donor-details">
+                                    <div class="donor-detail-item"><span>👤</span> ${u.fullname || 'Unnamed User'}</div>
+                                    <div class="donor-detail-item"><span>✉️</span> ${u.email || 'N/A'}</div>
+                                    <div class="donor-detail-item"><span>📞</span> ${u.phone || 'N/A'}</div>
+                                    <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
+                                    ${u.role === 'donor' ? `<div class="donor-detail-item"><span>🩸</span> ${u.blood_group || 'Blood group not available'}</div>` : ''}
+                                    ${u.role === 'hospital' ? `<div class="donor-detail-item"><span>🏥</span> ${u.license_number || 'License not available'}</div>` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading home donor/user lists:', error);
+                donorsList.innerHTML = '<p class="alert alert-danger">Failed to load blood donors.</p>';
+                usersList.innerHTML = '<p class="alert alert-danger">Failed to load user details.</p>';
+            }
+        }
+
         function protectLinks() {
             const token = localStorage.getItem('token');
             const protectedLinks = [
@@ -190,6 +270,7 @@
             startPolling(10000);
             checkAuth();
             protectLinks();
+            initHomeDonorAndUserLists();
         });
     </script>
 </body>

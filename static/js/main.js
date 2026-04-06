@@ -250,7 +250,7 @@ function initLogin() {
     localStorage.setItem('role', role);
     localStorage.setItem('user', JSON.stringify(data.user));
 
-    if (role === 'admin') window.location.href = '/';
+    if (role === 'admin') window.location.href = '/admin';
     if (role === 'hospital' || role === 'donor') window.location.href = '/dashboard';
   });
 }

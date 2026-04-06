@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blood Donors | LifeLink</title>
+    <title>All Users | LifeLink</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="/">Home</a></li>
-            <li><a href="/blood_donors" class="active">Blood Donors</a></li>
+            <li><a href="/blood_donors" id="users-nav-link" class="active">All Users</a></li>
             <li><a href="/dashboard" id="dashboard-link">Dashboard</a></li>
             <li><a href="/about_us">About Us</a></li>
         </ul>
@@ -31,23 +31,19 @@
     </nav>
 
     <main>
-        <section class="page-header">
-            <h1>Blood Donors</h1>
-            <p>Browse approved blood donors with contact details, city, and blood group.</p>
+        <section class="page-header all-users-header">
+            <h1 id="directory-title">Community Directory</h1>
+            <p id="directory-description">Search all registered donors and hospitals by name, city, role, blood group, or contact details.</p>
             <div class="search-container">
                 <input type="text" id="districtSearch" class="search-bar" placeholder="Search by donor name, city, or blood group...">
             </div>
         </section>
 
-        <section class="donors-container">
-            <h2 style="color: var(--primary-color); margin-bottom: 20px;">Approved Blood Donors</h2>
-            <div id="blood-donors-list" class="donor-grid">
-                <p style="color: white; grid-column: 1/-1; text-align: center;">Loading blood donors...</p>
+        <section class="donors-container all-users-container">
+            <div class="all-users-title-row">
+                <h2>All Registered Users</h2>
+                <span class="users-count-pill" id="users-count">0 users</span>
             </div>
-        </section>
-
-        <section class="donors-container" style="margin-top: 24px;">
-            <h2 style="color: var(--primary-color); margin-bottom: 20px;">All Registered Users</h2>
             <div id="all-users-list" class="donor-grid">
                 <p style="color: white; grid-column: 1/-1; text-align: center;">Loading user details...</p>
             </div>

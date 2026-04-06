@@ -618,6 +618,55 @@ main {
     text-align: center;
 }
 
+.all-users-header {
+    margin: 1rem auto 0;
+    width: min(1100px, 92%);
+    border: 1px solid rgba(163, 113, 247, 0.25);
+    border-radius: 24px;
+    padding: 2.5rem 1.5rem;
+    background:
+        radial-gradient(circle at 10% 20%, rgba(231, 76, 60, 0.2), transparent 30%),
+        radial-gradient(circle at 85% 10%, rgba(52, 152, 219, 0.2), transparent 35%),
+        rgba(22, 27, 34, 0.75);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+}
+
+.all-users-header h1 {
+    margin-bottom: 0.3rem;
+}
+
+.all-users-container {
+    margin-top: 1rem;
+}
+
+.all-users-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.all-users-title-row h2 {
+    margin: 0;
+    font-size: 1.7rem;
+    color: #f0f6fc;
+}
+
+.users-count-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #a5f3fc;
+    border: 1px solid rgba(52, 152, 219, 0.45);
+    background: rgba(52, 152, 219, 0.15);
+}
+
 /* Dashboard */
 .dashboard-container {
     padding: 2rem 5%;

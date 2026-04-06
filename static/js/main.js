@@ -250,7 +250,7 @@ function initLogin() {
     localStorage.setItem('role', role);
     localStorage.setItem('user', JSON.stringify(data.user));
 
-    if (role === 'admin') window.location.href = '/admin';
+    if (role === 'admin') window.location.href = '/dashboard';
     if (role === 'hospital' || role === 'donor') window.location.href = '/dashboard';
   });
 }
@@ -282,20 +282,12 @@ async function initAdminDashboard() {
   const pendingContainer = document.getElementById('pending-users');
   if (!pendingContainer) return;
   
-  const allUsersContainer = document.getElementById('all-users');
-  const notificationsContainer = document.getElementById('admin-notifications');
   const pendingCount = document.getElementById('pending-count');
 
   try {
-    const [pendingRes, allUsersRes, notesRes] = await Promise.all([
-      fetch(`${API_BASE}/admin/pending-users`, { headers: authHeaders() }),
-      fetch(`${API_BASE}/admin/all-users`, { headers: authHeaders() }),
-      fetch(`${API_BASE}/admin/notifications`, { headers: authHeaders() }),
-    ]);
+    const pendingRes = await fetch(`${API_BASE}/admin/pending-users`, { headers: authHeaders() });
 
     const pendingData = await pendingRes.json();
-    const allUsersData = await allUsersRes.json();
-    const notesData = await notesRes.json();
 
     if (!pendingRes.ok) {
       pendingContainer.innerHTML = `<p class="alert alert-danger">${pendingData.error || 'Unauthorized'}</p>`;
@@ -333,45 +325,6 @@ async function initAdminDashboard() {
         `;
         pendingContainer.appendChild(card);
       });
-    }
-
-    // Display all users
-    if (allUsersContainer) {
-      allUsersContainer.innerHTML = `
-        <h3>Donors (${(allUsersData.donors || []).length})</h3>
-        ${(allUsersData.donors || []).map(u => `
-          <div class="glass-panel" style="padding:12px; margin:8px 0;">
-            <b>${u.fullname}</b> - ${u.email}<br>
-            Phone: ${u.phone || 'N/A'} | Blood Group: ${u.blood_group || 'N/A'}<br>
-            Status: <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">${u.is_verified ? 'Verified' : 'Pending'}</span>
-            ${u.login_id ? `<br>Login ID: ${u.login_id}` : ''}
-          </div>
-        `).join('') || '<p class="text-muted">No donor records.</p>'}
-        
-        <h3 style="margin-top:20px;">Hospitals (${(allUsersData.hospitals || []).length})</h3>
-        ${(allUsersData.hospitals || []).map(u => `
-          <div class="glass-panel" style="padding:12px; margin:8px 0;">
-            <b>${u.fullname}</b> - ${u.email}<br>
-            Phone: ${u.phone || 'N/A'} | City: ${u.city || 'N/A'}<br>
-            Status: <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">${u.is_verified ? 'Verified' : 'Pending'}</span>
-            ${u.login_id ? `<br>Login ID: ${u.login_id}` : ''}
-          </div>
-        `).join('') || '<p class="text-muted">No hospital records.</p>'}
-      `;
-    }
-
-    // Display notifications
-    if (notificationsContainer) {
-      const notifications = notesData.notifications || [];
-      notificationsContainer.innerHTML = notifications.length === 0 
-        ? '<p class="text-muted">No notifications yet.</p>'
-        : notifications.map(n => `
-          <div class="glass-panel" style="padding:12px; margin:8px 0;">
-            <b>${n.type || 'Notification'}</b><br>
-            ${n.message || ''}<br>
-            <small>${n.created_at ? new Date(n.created_at).toLocaleString() : ''}</small>
-          </div>
-        `).join('');
     }
 
   } catch (error) {
@@ -596,12 +549,17 @@ async function initDonorDashboard() {
 async function initPublicDonorList() {
   const donorsList = document.getElementById('blood-donors-list');
   if (!donorsList) return;
+  const allUsersList = document.getElementById('all-users-list');
 
   try {
-    const res = await fetch(`${API_BASE}/api/donors`);
-    const data = await res.json();
+    const [donorsRes, usersRes] = await Promise.all([
+      fetch(`${API_BASE}/api/donors`),
+      fetch(`${API_BASE}/api/public-users`),
+    ]);
+    const data = await donorsRes.json();
+    const usersData = await usersRes.json();
     
-    if (!res.ok) {
+    if (!donorsRes.ok) {
       donorsList.innerHTML = '<p class="alert alert-danger">Unable to load blood donors.</p>';
       return;
     }
@@ -624,11 +582,39 @@ async function initPublicDonorList() {
         </div>
       `).join('');
 
+    if (allUsersList) {
+      if (!usersRes.ok) {
+        allUsersList.innerHTML = '<p class="alert alert-danger">Unable to load user details.</p>';
+      } else {
+        const donors = usersData.donors || [];
+        const hospitals = usersData.hospitals || [];
+        const userCards = [...donors, ...hospitals];
+        allUsersList.innerHTML = userCards.length === 0
+          ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No users found.</p>'
+          : userCards.map((u) => `
+            <div class="donor-card" data-role="${u.role || 'user'}">
+              <div class="donor-header">
+                <div class="donor-name">${u.fullname || 'Unnamed User'}</div>
+                <div class="blood-group">${(u.role || 'user').toUpperCase()}</div>
+              </div>
+              <div class="donor-details">
+                <div class="donor-detail-item"><span>👤</span> ${u.fullname || 'Unnamed User'}</div>
+                <div class="donor-detail-item"><span>✉️</span> ${u.email || 'N/A'}</div>
+                <div class="donor-detail-item"><span>📞</span> ${u.phone || 'N/A'}</div>
+                <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
+                ${u.role === 'donor' ? `<div class="donor-detail-item"><span>🩸</span> ${u.blood_group || 'Blood group not available'}</div>` : ''}
+                ${u.role === 'hospital' ? `<div class="donor-detail-item"><span>🏥</span> ${u.license_number || 'License not available'}</div>` : ''}
+              </div>
+            </div>
+          `).join('');
+      }
+    }
+
     const searchInput = document.getElementById('districtSearch');
     if (searchInput) {
       searchInput.addEventListener('input', () => {
         const term = searchInput.value.trim().toLowerCase();
-        document.querySelectorAll('#blood-donors-list .donor-card').forEach((card) => {
+        document.querySelectorAll('#blood-donors-list .donor-card, #all-users-list .donor-card').forEach((card) => {
           card.style.display = card.textContent.toLowerCase().includes(term) ? '' : 'none';
         });
       });

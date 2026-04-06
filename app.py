@@ -1496,6 +1496,43 @@ def list_donors():
         logger.error(f"Error listing donors: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/public-users", methods=["GET"])
+def list_public_users():
+    """Public list of approved donors and hospitals."""
+    try:
+        donors = []
+        for donor in donors_collection.find({
+            "status": "approved",
+            "donor_type": "blood"
+        }).limit(100):
+            donors.append({
+                "fullname": donor.get("fullname"),
+                "email": donor.get("email"),
+                "phone": donor.get("phone"),
+                "blood_group": donor.get("blood_group"),
+                "city": donor.get("city"),
+                "role": "donor"
+            })
+
+        hospitals = []
+        for hospital in hospitals_collection.find({"status": "approved"}).limit(100):
+            hospitals.append({
+                "fullname": hospital.get("fullname") or hospital.get("hospital_name"),
+                "email": hospital.get("email"),
+                "phone": hospital.get("phone"),
+                "city": hospital.get("city"),
+                "license_number": hospital.get("license_number"),
+                "role": "hospital"
+            })
+
+        return jsonify({
+            "donors": donors,
+            "hospitals": hospitals
+        }), 200
+    except Exception as e:
+        logger.error(f"Error listing public users: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/hospitals", methods=["GET"])
 def list_hospitals():
     """Public list of approved hospitals"""

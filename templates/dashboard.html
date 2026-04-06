@@ -174,15 +174,13 @@
             
             try {
                 // Fetch real data from API
-                const [statsRes, usersRes, pendingRes, donationsRes] = await Promise.all([
+                const [statsRes, pendingRes, donationsRes] = await Promise.all([
                     fetch('http://localhost:5000/api/stats'),
-                    fetch('http://localhost:5000/api/users'),
                     fetch('http://localhost:5000/api/pending-hospitals'),
                     fetch('http://localhost:5000/api/recent-donations')
                 ]);
                 
                 const stats = await statsRes.json();
-                const users = await usersRes.json();
                 const pendingHospitals = await pendingRes.json();
                 const donations = await donationsRes.json();
                 
@@ -208,67 +206,6 @@
                         <div class="stat-card dashboard-stat hospital">
                             <div class="stat-value">${pendingHospitals.length || 0}</div>
                             <div class="stat-label">Pending Verifications</div>
-                        </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">User Management</h3>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="text" class="form-control" placeholder="Search users..." id="userSearch" style="width: 300px;">
-                                <select class="form-control" id="userTypeFilter" style="width: 150px;">
-                                    <option value="all">All Users</option>
-                                    <option value="donor">Donors</option>
-                                    <option value="hospital">Hospitals</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table" id="usersTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Email</th>
-                                            <th>Type</th>
-                                            <th>City</th>
-                                            <th>Status</th>
-                                            <th>Joined</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${users.map(u => `
-                                            <tr data-user-type="${u.user_type}">
-                                                <td>${u.fullname}</td>
-                                                <td>${u.email}</td>
-                                                <td>
-                                                    <span class="badge ${u.user_type === 'donor' ? 'badge-danger' : 'badge-success'}">
-                                                        ${u.user_type.toUpperCase()}
-                                                    </span>
-                                                </td>
-                                                <td>${u.city || 'N/A'}</td>
-                                                <td>
-                                                    <span class="badge ${u.is_verified ? 'badge-success' : 'badge-warning'}">
-                                                        ${u.is_verified ? 'Verified' : 'Pending'}
-                                                    </span>
-                                                </td>
-                                                <td>${new Date(u.registeredDate).toLocaleDateString()}</td>
-                                                <td>
-                                                    <div style="display: flex; gap: 0.25rem;">
-                                                        <button class="btn btn-secondary btn-sm" onclick="viewUser('${u._id}')">
-                                                            <i class="fas fa-eye"></i>
-                                                        </button>
-                                                        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}')">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                     
@@ -349,8 +286,6 @@
                         </div>
                     </div>
                 `;
-                
-                setupUserSearch();
                 
             } catch (error) {
                 console.error('Error loading admin dashboard:', error);

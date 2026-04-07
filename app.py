@@ -1517,10 +1517,12 @@ def list_public_users():
         hospitals = []
         for hospital in hospitals_collection.find({"status": "approved"}).limit(100):
             hospitals.append({
+                "hospital_name": hospital.get("hospital_name") or hospital.get("fullname"),
                 "fullname": hospital.get("fullname") or hospital.get("hospital_name"),
                 "email": hospital.get("email"),
                 "phone": hospital.get("phone"),
                 "city": hospital.get("city"),
+                "address": hospital.get("address"),
                 "license_number": hospital.get("license_number"),
                 "role": "hospital"
             })

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#04060b"/>
+      <stop offset="100%" stop-color="#020307"/>
+    </linearGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#2a1116" stroke-width="1"/>
+    </pattern>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+  <rect width="100%" height="100%" fill="url(#grid)" opacity="0.8"/>
+
+  <g filter="url(#glow)">
+    <path d="M180 460 L360 460 L400 380 L440 460 L470 420 L500 500 L530 440 L560 560 L610 460"
+          fill="none" stroke="#ff274e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M610 460 C640 380, 710 360, 760 430 C810 360, 880 380, 910 460 C920 520, 840 590, 760 690 C680 590, 600 520, 610 460 Z"
+          fill="none" stroke="#ff274e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M910 460 L960 420 L1000 500 L1040 420 L1090 460 L1160 380 L1210 460 L1420 460"
+          fill="none" stroke="#ff274e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

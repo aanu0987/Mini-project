@@ -549,6 +549,18 @@ def serialize_user(user):
     user.pop("pending_password", None)
     return user
 
+def serialize_record(record):
+    """Serialize MongoDB document for JSON responses."""
+    if not record:
+        return None
+    record = dict(record)
+    if "_id" in record:
+        record["_id"] = str(record["_id"])
+    for key in ("created_at", "completed_at"):
+        if isinstance(record.get(key), datetime):
+            record[key] = record[key].isoformat()
+    return record
+
 def create_notification(event_type, message, **extra):
     """Create a system notification"""
     try:
@@ -1064,11 +1076,12 @@ def hospital_dashboard():
         recent = list(notifications_collection.find(
             {"hospital_id": str(hospital["_id"])}
         ).sort("created_at", -1).limit(20))
-        
-        for item in recent:
-            item["_id"] = str(item["_id"])
-            if isinstance(item.get("created_at"), datetime):
-                item["created_at"] = item["created_at"].isoformat()
+
+        # Get recent request/received messages from other hospitals
+        other_hospital_messages = list(notifications_collection.find({
+            "hospital_id": {"$ne": str(hospital["_id"])},
+            "type": {"$in": ["request", "received"]}
+        }).sort("created_at", -1).limit(20))
 
         # Get pending requests
         pending_requests = list(requests_collection.find({
@@ -1085,8 +1098,9 @@ def hospital_dashboard():
 
         return jsonify({
             "hospital": serialize_user(hospital),
-            "notifications": recent,
-            "pending_requests": pending_requests,
+            "notifications": [serialize_record(item) for item in recent],
+            "other_hospital_messages": [serialize_record(item) for item in other_hospital_messages],
+            "pending_requests": [serialize_record(item) for item in pending_requests],
             "nearby_donors": [serialize_user(d) for d in nearby_donors]
         }), 200
 
@@ -1109,6 +1123,7 @@ def hospital_request():
         data = request.get_json() or {}
         request_type = (data.get("request_type") or "").lower()  # organ/blood
         details = (data.get("details") or "").strip()
+        organ = (data.get("organ") or "").strip()
         blood_group = data.get("blood_group")
         quantity = data.get("quantity", 1)
         urgency = data.get("urgency", "normal")
@@ -1132,6 +1147,7 @@ def hospital_request():
             "urgency": urgency,
             "patient_name": patient_name,
             "details": details,
+            "organ": organ,
             "status": "pending",
             "created_at": datetime.utcnow()
         }

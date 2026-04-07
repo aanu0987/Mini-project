@@ -172,6 +172,9 @@
         async function loadHospitalDashboard(user) {
             const container = document.getElementById('dashboard-container');
             const token = localStorage.getItem('token') || '';
+            const organOptions = ['Heart', 'Lungs', 'Liver', 'Kidneys', 'Pancreas', 'Intestines', 'Cornea', 'Skin', 'Bone Marrow', 'Bone', 'Heart Valves', 'Blood Vessels'];
+            const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+            const tamilNaduDistricts = ['Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli', 'Tirupathur', 'Tiruppur', 'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram', 'Virudhunagar'];
 
             try {
                 const response = await fetch('/hospital/dashboard', {
@@ -189,6 +192,7 @@
                 const hospital = data.hospital || user || {};
                 const pendingRequests = data.pending_requests || [];
                 const notifications = data.notifications || [];
+                const otherHospitalMessages = data.other_hospital_messages || [];
                 const nearbyDonors = data.nearby_donors || [];
                 const recentRequests = pendingRequests.slice(0, 10);
                 const recentNotifications = notifications.slice(0, 8);
@@ -241,17 +245,68 @@
 
                         <div class="card">
                             <div class="card-header">
-                                <h3 class="card-title">Nearby Donors</h3>
-                                <span class="badge badge-success">${nearbyDonors.length}</span>
+                                <h3 class="card-title">Other Hospitals Requests and Received Messages</h3>
+                                <span class="badge badge-success">${otherHospitalMessages.length}</span>
                             </div>
                             <div class="card-body" style="max-height: 280px; overflow-y: auto;">
-                                ${nearbyDonors.length === 0 ? '<p class="text-muted">No available donors found in your district.</p>' : nearbyDonors.map(d => `
+                                ${otherHospitalMessages.length === 0 ? '<p class="text-muted">No request/received messages from other hospitals yet.</p>' : otherHospitalMessages.map(msg => `
                                     <div class="glass-panel" style="padding: 10px; margin-bottom: 8px;">
-                                        <b>${d.fullname || 'Donor'}</b> (${d.blood_group || 'N/A'})<br>
-                                        ${d.phone ? `📞 ${d.phone}<br>` : ''}
-                                        ${d.email ? `📧 ${d.email}` : ''}
+                                        <b>${(msg.type || 'message').toUpperCase()}</b> - ${msg.hospital_name || 'Hospital'}<br>
+                                        ${msg.request_type ? `Type: ${(msg.request_type || '').toUpperCase()}<br>` : ''}
+                                        ${msg.message || 'No message available.'}<br>
+                                        <small>${msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}</small>
                                     </div>
                                 `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Organ and Blood Request</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="card" style="margin-bottom: 0;">
+                                    <div class="card-header"><h3 class="card-title">Organ Request</h3></div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="hospital-organ-select">Choose the Organ</label>
+                                            <select id="hospital-organ-select" class="form-control">
+                                                <option value="">Select organ</option>
+                                                ${organOptions.map(organ => `<option value="${organ}">${organ}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="hospital-organ-blood-group">Blood Group</label>
+                                            <select id="hospital-organ-blood-group" class="form-control">
+                                                <option value="">Select blood group</option>
+                                                ${bloodGroups.map(group => `<option value="${group}">${group}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <button id="hospital-organ-request-btn" class="btn">Request</button>
+                                    </div>
+                                </div>
+                                <div class="card" style="margin-bottom: 0;">
+                                    <div class="card-header"><h3 class="card-title">Blood Request</h3></div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="hospital-blood-group-select">Choose the Blood</label>
+                                            <select id="hospital-blood-group-select" class="form-control">
+                                                <option value="">Select blood group</option>
+                                                ${bloodGroups.map(group => `<option value="${group}">${group}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="hospital-city-select">City</label>
+                                            <select id="hospital-city-select" class="form-control">
+                                                <option value="">Select district</option>
+                                                ${tamilNaduDistricts.map(district => `<option value="${district}">${district}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <button id="hospital-blood-request-btn" class="btn">Request</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -267,25 +322,21 @@
                                     <thead>
                                         <tr>
                                             <th>Type</th>
-                                            <th>Details</th>
+                                            <th>Organ</th>
                                             <th>Blood Group</th>
-                                            <th>Urgency</th>
-                                            <th>Created</th>
-                                            <th>Status</th>
+                                            <th>Received</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         ${recentRequests.map(req => `
                                             <tr>
                                                 <td><span class="badge ${req.request_type === 'blood' ? 'badge-danger' : 'badge-success'}">${(req.request_type || 'N/A').toUpperCase()}</span></td>
-                                                <td>${req.details || req.patient_name || 'N/A'}</td>
+                                                <td>${req.organ || req.details || req.patient_name || 'N/A'}</td>
                                                 <td>${req.blood_group || 'N/A'}</td>
-                                                <td><span class="badge ${req.urgency === 'emergency' ? 'badge-danger' : 'badge-warning'}">${(req.urgency || 'normal').toUpperCase()}</span></td>
-                                                <td>${req.created_at ? new Date(req.created_at).toLocaleString() : 'N/A'}</td>
-                                                <td><span class="badge badge-warning">${(req.status || 'pending').toUpperCase()}</span></td>
+                                                <td><button class="btn btn-secondary hospital-received-btn" data-request-id="${req._id}" data-request-type="${req.request_type || 'organ'}">Received</button></td>
                                             </tr>
                                         `).join('')}
-                                        ${recentRequests.length === 0 ? '<tr><td colspan="6" style="text-align: center;">No pending requests.</td></tr>' : ''}
+                                        ${recentRequests.length === 0 ? '<tr><td colspan="4" style="text-align: center;">No pending requests.</td></tr>' : ''}
                                     </tbody>
                                 </table>
                             </div>
@@ -293,9 +344,80 @@
                     </div>
 
                 `;
+
+                document.getElementById('hospital-organ-request-btn')?.addEventListener('click', async () => {
+                    const organ = document.getElementById('hospital-organ-select')?.value;
+                    const bloodGroup = document.getElementById('hospital-organ-blood-group')?.value;
+                    if (!organ || !bloodGroup) {
+                        alert('Please choose an organ and blood group.');
+                        return;
+                    }
+                    await createHospitalRequest(token, {
+                        request_type: 'organ',
+                        blood_group: bloodGroup,
+                        details: organ,
+                        organ
+                    });
+                });
+
+                document.getElementById('hospital-blood-request-btn')?.addEventListener('click', async () => {
+                    const bloodGroup = document.getElementById('hospital-blood-group-select')?.value;
+                    const city = document.getElementById('hospital-city-select')?.value;
+                    if (!bloodGroup || !city) {
+                        alert('Please choose blood group and city.');
+                        return;
+                    }
+                    await createHospitalRequest(token, {
+                        request_type: 'blood',
+                        blood_group: bloodGroup,
+                        details: `City: ${city}`
+                    });
+                });
+
+                container.querySelectorAll('.hospital-received-btn').forEach((button) => {
+                    button.addEventListener('click', async () => {
+                        const requestId = button.getAttribute('data-request-id');
+                        const requestType = button.getAttribute('data-request-type') || 'organ';
+                        await markRequestReceived(token, requestId, requestType);
+                    });
+                });
             } catch (error) {
                 console.error('Error loading hospital dashboard:', error);
                 container.innerHTML = '<div class="alert alert-danger" style="text-align: center;">Error loading hospital dashboard. Please refresh.</div>';
+            }
+        }
+
+        async function createHospitalRequest(token, payload) {
+            const response = await fetch('/hospital/request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            alert(data.message || data.error || 'Request submitted.');
+            if (response.ok) {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                loadHospitalDashboard(user);
+            }
+        }
+
+        async function markRequestReceived(token, requestId, requestType) {
+            const response = await fetch('/hospital/received', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ request_id: requestId, request_type: requestType })
+            });
+            const data = await response.json();
+            alert(data.message || data.error || 'Request updated.');
+            if (response.ok) {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                loadHospitalDashboard(user);
             }
         }
 

@@ -41,17 +41,31 @@ function updateAuthButtonState() {
 
 function applyRoleBasedLabels() {
   const role = localStorage.getItem('role');
-  if (role !== 'admin') return;
-
-  document.querySelectorAll('a[href="/blood_donors"]').forEach((link) => {
-    link.textContent = 'All Users';
-  });
-
   const directoryTitle = document.getElementById('directory-title');
   const directoryDescription = document.getElementById('directory-description');
-  if (directoryTitle) directoryTitle.textContent = 'All Users Directory';
-  if (directoryDescription) {
-    directoryDescription.textContent = 'Admin view enabled: review all registered donors and hospitals in one searchable list.';
+  const usersNavLink = document.getElementById('users-nav-link');
+  const searchInput = document.getElementById('districtSearch');
+
+  if (role === 'admin') {
+    document.querySelectorAll('a[href="/blood_donors"]').forEach((link) => {
+      link.textContent = 'All Users';
+    });
+    if (usersNavLink) usersNavLink.textContent = 'All Users';
+    if (directoryTitle) directoryTitle.textContent = 'All Users Directory';
+    if (directoryDescription) {
+      directoryDescription.textContent = 'Admin view enabled: review all registered donors and hospitals in one searchable list.';
+    }
+    if (searchInput) searchInput.placeholder = 'Search by donor name, city, role, blood group, or contact details...';
+  } else if (role === 'donor') {
+    document.querySelectorAll('a[href="/blood_donors"]').forEach((link) => {
+      link.textContent = 'Hospitals';
+    });
+    if (usersNavLink) usersNavLink.textContent = 'Hospitals';
+    if (directoryTitle) directoryTitle.textContent = 'Hospital Directory';
+    if (directoryDescription) {
+      directoryDescription.textContent = 'View verified hospitals with hospital name, contact number, address, and city.';
+    }
+    if (searchInput) searchInput.placeholder = 'Search by hospital name, city, address, or contact number...';
   }
 }
 
@@ -567,6 +581,7 @@ async function initPublicDonorList() {
   const allUsersList = document.getElementById('all-users-list');
   if (!allUsersList) return;
   const usersCount = document.getElementById('users-count');
+  const role = localStorage.getItem('role');
 
   try {
     const usersRes = await fetch(`${API_BASE}/api/public-users`);
@@ -577,28 +592,40 @@ async function initPublicDonorList() {
       return;
     }
 
-    const donors = usersData.donors || [];
     const hospitals = usersData.hospitals || [];
-    const userCards = [...donors, ...hospitals];
+    const donors = usersData.donors || [];
+    const userCards = role === 'donor' ? hospitals : [...donors, ...hospitals];
+
+    const countLabel = role === 'donor' ? 'hospital' : 'user';
     if (usersCount) {
-      usersCount.textContent = `${userCards.length} ${userCards.length === 1 ? 'user' : 'users'}`;
+      usersCount.textContent = `${userCards.length} ${userCards.length === 1 ? countLabel : `${countLabel}s`}`;
     }
 
     allUsersList.innerHTML = userCards.length === 0
-      ? '<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No users found.</p>'
+      ? `<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No ${role === 'donor' ? 'hospitals' : 'users'} found.</p>`
       : userCards.map((u) => `
         <div class="donor-card" data-role="${u.role || 'user'}">
           <div class="donor-header">
-            <div class="donor-name">${u.fullname || 'Unnamed User'}</div>
-            <div class="blood-group">${(u.role || 'user').toUpperCase()}</div>
+            <div class="donor-name">${u.hospital_name || u.fullname || 'Unnamed User'}</div>
+            <div class="blood-group">${role === 'donor' ? 'HOSPITAL' : (u.role || 'user').toUpperCase()}</div>
           </div>
           <div class="donor-details">
-            <div class="donor-detail-item"><span>👤</span> ${u.fullname || 'Unnamed User'}</div>
-            <div class="donor-detail-item"><span>✉️</span> ${u.email || 'N/A'}</div>
-            <div class="donor-detail-item"><span>📞</span> ${u.phone || 'N/A'}</div>
-            <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
-            ${u.role === 'donor' ? `<div class="donor-detail-item"><span>🩸</span> ${u.blood_group || 'Blood group not available'}</div>` : ''}
-            ${u.role === 'hospital' ? `<div class="donor-detail-item"><span>🏥</span> ${u.license_number || 'License not available'}</div>` : ''}
+            ${role === 'donor'
+              ? `
+                <div class="donor-detail-item"><span>🏥</span> ${u.hospital_name || u.fullname || 'Hospital name not available'}</div>
+                <div class="donor-detail-item"><span>📞</span> ${u.phone || 'N/A'}</div>
+                <div class="donor-detail-item"><span>📍</span> ${u.address || 'Address not provided'}</div>
+                <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
+              `
+              : `
+                <div class="donor-detail-item"><span>👤</span> ${u.fullname || 'Unnamed User'}</div>
+                <div class="donor-detail-item"><span>✉️</span> ${u.email || 'N/A'}</div>
+                <div class="donor-detail-item"><span>📞</span> ${u.phone || 'N/A'}</div>
+                <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
+                ${u.role === 'donor' ? `<div class="donor-detail-item"><span>🩸</span> ${u.blood_group || 'Blood group not available'}</div>` : ''}
+                ${u.role === 'hospital' ? `<div class="donor-detail-item"><span>🏥</span> ${u.license_number || 'License not available'}</div>` : ''}
+              `
+            }
           </div>
         </div>
       `).join('');

@@ -460,6 +460,116 @@ LifeLink Team
     return send_email(user_email, f'Welcome to LifeLink - Registration Successful!', content)
 
 
+def send_organ_request_email_to_other_hospitals(requesting_hospital, organ, details, urgency, quantity, patient_name=None):
+    """Send organ request email to other approved hospitals."""
+    requesting_hospital_id = str(requesting_hospital.get("_id"))
+    recipients = hospitals_collection.find({
+        "status": "approved",
+        "_id": {"$ne": requesting_hospital.get("_id")}
+    })
+
+    request_hospital_name = requesting_hospital.get("hospital_name", requesting_hospital.get("fullname", "A hospital"))
+    urgency_label = (urgency or "normal").upper()
+    organ_text = organ or "organ support"
+    quantity_text = quantity if quantity else "N/A"
+    patient_text = patient_name or "Confidential"
+
+    for recipient in recipients:
+        recipient_email = (recipient.get("email") or "").strip()
+        if not recipient_email:
+            continue
+
+        email_content = f"""
+Dear {recipient.get('hospital_name', recipient.get('fullname', 'Hospital Team'))},
+
+{request_hospital_name} has raised an organ request through LifeLink and would like your support.
+
+Request snapshot:
+• Organ required: {organ_text}
+• Priority level: {urgency_label}
+• Quantity required: {quantity_text}
+• Patient reference: {patient_text}
+• Requesting hospital city: {requesting_hospital.get('city', 'N/A')}
+• Contact number: {requesting_hospital.get('phone', 'N/A')}
+
+Additional clinical notes:
+{details or 'No additional details were provided.'}
+
+If your facility can coordinate transfer or guidance, please contact the requesting hospital at the earliest.
+
+Regards,
+LifeLink Coordination Desk
+        """
+        send_email(
+            recipient_email,
+            f"LifeLink Organ Collaboration Request - {organ_text}",
+            email_content
+        )
+
+    log_action('email', f'Organ request email alerts sent to other hospitals by {requesting_hospital_id}')
+
+
+def send_blood_request_email_to_all_users(requesting_hospital, blood_group, details, urgency, quantity, patient_name=None):
+    """Send blood request email to all users except the requesting hospital."""
+    requesting_hospital_id = str(requesting_hospital.get("_id"))
+    request_hospital_name = requesting_hospital.get("hospital_name", requesting_hospital.get("fullname", "A hospital"))
+    urgency_label = (urgency or "normal").upper()
+    blood_group_text = blood_group or "Any"
+    quantity_text = quantity if quantity else "N/A"
+    patient_text = patient_name or "Confidential"
+
+    recipients = []
+
+    donors = donors_collection.find({"status": "approved"})
+    recipients.extend([("donor", donor) for donor in donors])
+
+    hospitals = hospitals_collection.find({
+        "status": "approved",
+        "_id": {"$ne": requesting_hospital.get("_id")}
+    })
+    recipients.extend([("hospital", hospital) for hospital in hospitals])
+
+    admins = admins_collection.find({})
+    recipients.extend([("admin", admin) for admin in admins])
+
+    sent_addresses = set()
+    for _, user in recipients:
+        recipient_email = (user.get("email") or "").strip().lower()
+        if not recipient_email or recipient_email in sent_addresses:
+            continue
+        sent_addresses.add(recipient_email)
+
+        user_display_name = user.get("fullname") or user.get("hospital_name") or "LifeLink User"
+        email_content = f"""
+Dear {user_display_name},
+
+This is a platform-wide blood request notification from {request_hospital_name}.
+
+Request snapshot:
+• Blood group needed: {blood_group_text}
+• Priority level: {urgency_label}
+• Units requested: {quantity_text}
+• Patient reference: {patient_text}
+• Requesting hospital city: {requesting_hospital.get('city', 'N/A')}
+• Contact number: {requesting_hospital.get('phone', 'N/A')}
+
+Additional request notes:
+{details or 'No additional details were provided.'}
+
+If you can contribute, coordinate, or share this request with a potential donor, please respond quickly.
+
+Regards,
+LifeLink Blood Response Desk
+        """
+        send_email(
+            recipient_email,
+            f"LifeLink Blood Request Alert - {blood_group_text}",
+            email_content
+        )
+
+    log_action('email', f'Blood request email alerts sent to all users by {requesting_hospital_id}')
+
+
 def send_hospital_pending_email(user_email, user_name, password=None):
     """Send hospital registration pending verification email"""
     content = f"""
@@ -1214,6 +1324,24 @@ Thank you for being a lifesaver!
 LifeLink Team
                         """
                     )
+
+            send_blood_request_email_to_all_users(
+                hospital,
+                blood_group=blood_group,
+                details=details,
+                urgency=urgency,
+                quantity=quantity,
+                patient_name=patient_name
+            )
+        elif request_type == "organ":
+            send_organ_request_email_to_other_hospitals(
+                hospital,
+                organ=organ,
+                details=details,
+                urgency=urgency,
+                quantity=quantity,
+                patient_name=patient_name
+            )
 
         log_action('request', f'{request_type.capitalize()} request created', str(hospital["_id"]))
         

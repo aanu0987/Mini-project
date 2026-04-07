@@ -45,6 +45,7 @@ function applyRoleBasedLabels() {
   const directoryDescription = document.getElementById('directory-description');
   const usersNavLink = document.getElementById('users-nav-link');
   const searchInput = document.getElementById('districtSearch');
+  const sectionTitle = document.querySelector('.all-users-title-row h2');
 
   if (role === 'admin') {
     document.querySelectorAll('a[href="/blood_donors"]').forEach((link) => {
@@ -62,10 +63,22 @@ function applyRoleBasedLabels() {
     });
     if (usersNavLink) usersNavLink.textContent = 'Hospitals';
     if (directoryTitle) directoryTitle.textContent = 'Hospital Directory';
+    if (sectionTitle) sectionTitle.textContent = 'Verified Hospitals';
     if (directoryDescription) {
       directoryDescription.textContent = 'View verified hospitals with hospital name, contact number, address, and city.';
     }
     if (searchInput) searchInput.placeholder = 'Search by hospital name, city, address, or contact number...';
+  } else if (role === 'hospital') {
+    document.querySelectorAll('a[href="/blood_donors"]').forEach((link) => {
+      link.textContent = 'Donors';
+    });
+    if (usersNavLink) usersNavLink.textContent = 'Donors';
+    if (directoryTitle) directoryTitle.textContent = 'Donor Directory';
+    if (sectionTitle) sectionTitle.textContent = 'Registered Donors';
+    if (directoryDescription) {
+      directoryDescription.textContent = 'View donors with name, contact number, address, and city.';
+    }
+    if (searchInput) searchInput.placeholder = 'Search by donor name, city, address, or contact number...';
   }
 }
 
@@ -594,20 +607,24 @@ async function initPublicDonorList() {
 
     const hospitals = usersData.hospitals || [];
     const donors = usersData.donors || [];
-    const userCards = role === 'donor' ? hospitals : [...donors, ...hospitals];
+    const userCards = role === 'donor'
+      ? hospitals
+      : role === 'hospital'
+        ? donors
+        : [...donors, ...hospitals];
 
-    const countLabel = role === 'donor' ? 'hospital' : 'user';
+    const countLabel = role === 'donor' ? 'hospital' : role === 'hospital' ? 'donor' : 'user';
     if (usersCount) {
       usersCount.textContent = `${userCards.length} ${userCards.length === 1 ? countLabel : `${countLabel}s`}`;
     }
 
     allUsersList.innerHTML = userCards.length === 0
-      ? `<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No ${role === 'donor' ? 'hospitals' : 'users'} found.</p>`
+      ? `<p class="text-muted" style="grid-column: 1/-1; text-align: center;">No ${role === 'donor' ? 'hospitals' : role === 'hospital' ? 'donors' : 'users'} found.</p>`
       : userCards.map((u) => `
         <div class="donor-card" data-role="${u.role || 'user'}">
           <div class="donor-header">
             <div class="donor-name">${u.hospital_name || u.fullname || 'Unnamed User'}</div>
-            <div class="blood-group">${role === 'donor' ? 'HOSPITAL' : (u.role || 'user').toUpperCase()}</div>
+            <div class="blood-group">${role === 'donor' ? 'HOSPITAL' : role === 'hospital' ? 'DONOR' : (u.role || 'user').toUpperCase()}</div>
           </div>
           <div class="donor-details">
             ${role === 'donor'
@@ -617,6 +634,13 @@ async function initPublicDonorList() {
                 <div class="donor-detail-item"><span>📍</span> ${u.address || 'Address not provided'}</div>
                 <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
               `
+              : role === 'hospital'
+                ? `
+                  <div class="donor-detail-item"><span>👤</span> ${u.fullname || 'Donor name not available'}</div>
+                  <div class="donor-detail-item"><span>📞</span> ${u.phone || 'N/A'}</div>
+                  <div class="donor-detail-item"><span>📍</span> ${u.address || 'Address not provided'}</div>
+                  <div class="donor-detail-item"><span>🌆</span> ${u.city || 'City not provided'}</div>
+                `
               : `
                 <div class="donor-detail-item"><span>👤</span> ${u.fullname || 'Unnamed User'}</div>
                 <div class="donor-detail-item"><span>✉️</span> ${u.email || 'N/A'}</div>

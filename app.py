@@ -1509,6 +1509,7 @@ def list_public_users():
                 "fullname": donor.get("fullname"),
                 "email": donor.get("email"),
                 "phone": donor.get("phone"),
+                "address": donor.get("address"),
                 "blood_group": donor.get("blood_group"),
                 "city": donor.get("city"),
                 "role": "donor"

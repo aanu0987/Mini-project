@@ -292,21 +292,6 @@
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Hospital Notifications</h3>
-                            <span class="badge badge-primary">${recentNotifications.length}</span>
-                        </div>
-                        <div class="card-body">
-                            ${recentNotifications.length === 0 ? '<p class="text-muted">No notifications available.</p>' : recentNotifications.map(note => `
-                                <div class="glass-panel" style="padding: 12px; margin: 8px 0;">
-                                    <b>${(note.type || 'Notification').toUpperCase()}</b><br>
-                                    ${note.message || ''}<br>
-                                    <small>${note.created_at ? new Date(note.created_at).toLocaleString() : ''}</small>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
                 `;
             } catch (error) {
                 console.error('Error loading hospital dashboard:', error);
